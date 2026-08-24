@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mozdonykereső - Holavonat.is (EMIG)</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+        
+        /* Új, kombinált vezérlő panel a jobb felső sarokban */
+        #top-controls {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 5px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: flex;
+            gap: 5px;
+            border: 1px solid #ccc;
+        }
+
+        .control-btn {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+            transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+        }
+
+        .control-btn:hover {
+            background: #e2e6ea;
+        }
+
+        /* Számláló gomb egyedi stílusa */
+        #timer-btn {
+            color: #d32f2f;
+            min-width: 40px;
+        }
+
+        /* UIC gomb aktív állapota */
+        #uic-toggle.active {
+            background-color: #0056b3;
+            color: white;
+            border-color: #004494;
+        }
+
+        .train-tooltip {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #666;
+            border-radius: 4px;
+            padding: 8px;
+            font-size: 14px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .train-tooltip b {
+            color: #0056b3;
+        }
+        .delay-warning {
+            color: #d32f2f;
+            font-weight: bold;
+        }
+
+        /* --- CSS SZABÁLYOK AZ UIC BUBORÉKOKHOZ --- */
+        .custom-div-icon {
+            overflow: visible !important;
+        }
+
+        .uic-bubble {
+            display: none;
+            position: absolute;
+            top: -10px;
+            left: 22px;
+            background: #ffffff;
+            border: 2px solid #0056b3;
+            color: #333;
+            padding: 2px 6px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Ha a térkép megkapja a 'show-uic' osztályt, megjelennek a buborékok */
+        .show-uic .uic-bubble {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="top-controls">
+        <div id="timer-btn" class="control-btn" onclick="manualRefresh()" title="Azonnali frissítés">30</div>
+        <div id="uic-toggle" class="control-btn" onclick="toggleUIC()" title="UIC számok ki/bekapcsolása">UIC</div>
+    </div>
+
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map').setView([47.1625, 19.5033], 7);
+
+        // 1. Alaptérkép 1: OpenStreetMap
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+
+        // 2. Alaptérkép 2: OpenTopoMap
+        const topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            maxZoom: 17,
+            attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a>'
+        });
+
+        // 3. Rátét (Overlay): OpenRailwayMap
+        const ormLayer = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openrailwaymap.org/">OpenRailwayMap</a>'
+        }).addTo(map);
+
+        // Rétegválasztó vezérlő beállítása
+        const baseMaps = {
+            "OpenStreetMap": osmLayer,
+            "OpenTopoMap": topoLayer
+        };
+
+        const overlayMaps = {
+            "Vasúthálózat (ORM)": ormLayer
+        };
+
+        // Kicsit lejjebb toljuk a Leaflet alapértelmezett rétegválasztóját, hogy ne takarja a dobozunkat
+        L.control.layers(baseMaps, overlayMaps, {position: 'bottomright'}).addTo(map);
+
+        // Mozdonyok marker csoportja
+        let markerGroup = L.layerGroup().addTo(map);
+
+        const DATA_URL = 'https://cdn.holavonat.is/emig_data_v1.json';
+        
+        const UPDATE_INTERVAL = 30;
+        let timeLeft = UPDATE_INTERVAL;
+        const timerBtn = document.getElementById('timer-btn');
+        const uicToggle = document.getElementById('uic-toggle');
+        const mapEl = document.getElementById('map');
+
+        // UIC gomb kezelése
+        function toggleUIC() {
+            const isActive = mapEl.classList.toggle('show-uic');
+            if (isActive) {
+                uicToggle.classList.add('active');
+            } else {
+                uicToggle.classList.remove('active');
+            }
+        }
+
+        // Manuális frissítés kattintásra
+        function manualRefresh() {
+            timeLeft = UPDATE_INTERVAL;
+            timerBtn.textContent = timeLeft;
+            fetchLocomotiveData();
+        }
+
+        // SVG Ikon generátor
+        function createDirectionalIcon(heading, uic) {
+            const hasHeading = heading !== null && heading !== undefined;
+            const rotation = hasHeading ? heading : 0; 
+
+            const arrowElement = hasHeading ? `
+                <g transform="rotate(${rotation} 12 12)">
+                    <path d="M12 4 L17 11 L13 11 L13 18 L11 18 L11 11 L7 11 Z" fill="white"/>
+                </g>
+            ` : '';
+
+            const iconHtml = `
+                <div style="position: relative; width: 24px; height: 24px;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="10" fill="#0056b3" stroke="white" stroke-width="2"/>
+                        ${arrowElement}
+                    </svg>
+                    <div class="uic-bubble">${uic}</div>
+                </div>
+            `;
+
+            return L.divIcon({
+                className: 'custom-div-icon',
+                html: iconHtml,
+                iconSize: [24, 24],
+                iconAnchor: [12, 12] 
+            });
+        }
+
+        async function fetchLocomotiveData() {
+            try {
+                const urlWithTimestamp = `${DATA_URL}?t=${new Date().getTime()}`;
+                const response = await fetch(urlWithTimestamp);
+                
+                if (!response.ok) throw new Error('Hálózati hiba a lekéréskor');
+                const data = await response.json();
+                
+                markerGroup.clearLayers();
+
+                let locomotives = [];
+                if (Array.isArray(data)) {
+                    locomotives = data;
+                } else if (typeof data === 'object') {
+                    locomotives = Object.values(data);
+                    for (let key in data) {
+                        if (Array.isArray(data[key])) {
+                            locomotives = data[key];
+                            break;
+                        }
+                    }
+                }
+
+                locomotives.forEach(loco => {
+                    const lat = loco.lat || loco.Lat || loco.latitude || loco.Latitude;
+                    const lon = loco.lon || loco.lng || loco.Lon || loco.Lng || loco.longitude || loco.Longitude;
+                    
+                    const uic = loco.uic || loco.UIC || 'Ismeretlen';
+                    const trainNumber = loco.trainNumber || loco.TrainNumber || loco.flight || 'Ismeretlen';
+                    const from = loco.from || loco.From || loco.origin || '-';
+                    const to = loco.to || loco.To || loco.destination || '-';
+                    
+                    const delayMin = loco.delayMin || loco.delay || 0;
+                    const delayText = delayMin > 0 ? `<span class="delay-warning">+${delayMin} perc</span>` : '0 perc';
+
+                    const heading = loco.heading !== undefined ? loco.heading : (loco.Heading !== undefined ? loco.Heading : loco.direction);
+
+                    if (lat && lon) {
+                        const tooltipContent = `
+                            <div>
+                                <b>UIC:</b> ${uic}<br>
+                                <b>Vonat:</b> ${trainNumber}<br>
+                                <b>Útvonal:</b> ${from} &#10141; ${to}<br>
+                                <b>Késés:</b> ${delayText}
+                            </div>
+                        `;
+
+                        const marker = L.marker([lat, lon], {
+                            icon: createDirectionalIcon(heading, uic)
+                        });
+
+                        marker.bindTooltip(tooltipContent, {
+                            className: 'train-tooltip',
+                            direction: 'top',
+                            offset: [0, -10],
+                            opacity: 1
+                        });
+
+                        marker.addTo(markerGroup);
+                    }
+                });
+
+            } catch (error) {
+                console.error('Hiba történt az adatok frissítésekor:', error);
+            }
+        }
+
+        function updateTimer() {
+            timeLeft--;
+            
+            if (timeLeft <= 0) {
+                timeLeft = UPDATE_INTERVAL;
+                fetchLocomotiveData();
+            }
+            
+            timerBtn.textContent = timeLeft;
+        }
+
+        fetchLocomotiveData();
+        setInterval(updateTimer, 1000);
+
+    </script>
+</body>
+</html>
