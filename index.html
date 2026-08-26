@@ -175,7 +175,7 @@
             border: 2px solid #ffffff;
             color: #ffffff;
             padding: 3px 6px;
-            border-radius: 8px; /* Picit szögletesebb, hogy a két sornak jól álljon */
+            border-radius: 8px;
             font-size: 11px;
             font-weight: bold;
             box-shadow: 0 2px 4px rgba(0,0,0,0.5);
@@ -183,12 +183,12 @@
             pointer-events: none;
             z-index: 10;
             line-height: 1.3;
-            text-align: center; /* Ha két soros, akkor középre lesz igazítva */
+            text-align: center;
         }
 
         /* Térkép állapotok szerinti megjelenítés és pozicionálás */
         .uic-bubble { top: -10px; }
-        .train-bubble { top: -18px; } /* A két soros buborékot picit feljebb toljuk */
+        .train-bubble { top: -18px; } 
 
         .show-uic .uic-bubble { display: block; }
         .show-train .train-bubble { display: block; }
@@ -287,7 +287,6 @@
         
         let useMavColors = false; 
         
-        // 3-állapotú vezérlő: 0 = rejtett, 1 = UIC, 2 = UIC + Vonatszám + Késés
         let labelDisplayState = 0; 
 
         const timerBtn = document.getElementById('timer-btn');
@@ -350,11 +349,9 @@
             renderLocomotives();
         }
 
-        // --- 3-ÁLLAPOTÚ FELIRAT LÉPTETŐ ---
         function toggleUIC() {
             labelDisplayState = (labelDisplayState + 1) % 3;
             
-            // Mindkét osztály törlése
             mapEl.classList.remove('show-uic', 'show-train');
             
             if (labelDisplayState === 1) {
@@ -366,7 +363,6 @@
                 uicToggle.classList.add('active');
                 uicToggle.textContent = 'VSz';
             } else {
-                // Állapot 0 (Kikapcsolva)
                 uicToggle.classList.remove('active');
                 uicToggle.textContent = 'UIC';
             }
@@ -388,13 +384,21 @@
                     <path d="M12 4 L17 11 L13 11 L13 18 L11 18 L11 11 L7 11 Z" fill="#222222"/>
                 </g>` : '';
 
-            // --- 1. RÖVIDÍTETT UIC FELDOLGOZÁSA (Első sor) ---
+            // --- 1. RÖVIDÍTETT UIC FELDOLGOZÁSA (Okosabb levágás) ---
             let shortUic = uic || "???";
             const cleanedUic = shortUic.replace(/\D/g, ''); 
 
             if (cleanedUic.length === 12) {
-                shortUic = cleanedUic.substring(5, 8) + ' ' + cleanedUic.substring(8, 11);
-            } else if (cleanedUic.length === 7 || cleanedUic.length === 6) {
+                // Ha 8-assal kezdődik a sorozat (pl. 8055), akkor 4 számjegyet veszünk
+                if (cleanedUic.charAt(4) === '8') {
+                    shortUic = cleanedUic.substring(4, 8) + ' ' + cleanedUic.substring(8, 11);
+                } else {
+                    // Egyébként a szokásos 3 (pl. 0418 -> 418)
+                    shortUic = cleanedUic.substring(5, 8) + ' ' + cleanedUic.substring(8, 11);
+                }
+            } else if (cleanedUic.length >= 7 && cleanedUic.charAt(0) === '8') {
+                shortUic = cleanedUic.substring(0, 4) + ' ' + cleanedUic.substring(4, 7);
+            } else if (cleanedUic.length >= 6) {
                 shortUic = cleanedUic.substring(0, 3) + ' ' + cleanedUic.substring(3, 6);
             }
 
