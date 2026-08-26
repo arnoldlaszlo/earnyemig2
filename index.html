@@ -196,23 +196,23 @@
         /* --- MOBIL NÉZET: GOMBOK MÉRETÉNEK TOVÁBBI CSÖKKENTÉSE --- */
         @media (max-width: 768px) {
             .control-btn {
-                padding: 4px 8px; /* Még kisebb padding */
-                font-size: 12px;  /* 14px-ről 12px-re */
+                padding: 4px 8px; 
+                font-size: 12px;  
             }
 
             .filter-top-row #btn-all {
                 padding: 4px 0;
-                font-size: 10px;  /* 11px-ről 10px-re */
+                font-size: 10px;  
             }
 
             .search-input {
                 padding: 5px;      
-                font-size: 11px;  /* 12px-ről 11px-re */
+                font-size: 11px;  
             }
 
             .preset-btn {
                 padding: 4px 0;    
-                font-size: 10px;  /* 11px-ről 10px-re */
+                font-size: 10px;  
             }
 
             #timer-btn {
@@ -273,8 +273,10 @@
 
         function setInitialMapBounds() {
             if (window.innerWidth <= 768) {
-                map.setView([46.25, 17.90], 8);
+                // MOBIL NÉZET: Dombóvár középen (8-as nagyítással)
+                map.setView([46.37, 18.14], 8);
             } else {
+                // ASZTALI NÉZET
                 map.setView([47.16, 19.50], 8); 
             }
         }
@@ -354,7 +356,7 @@
             renderLocomotives(); 
         }
 
-        // --- ÚJ: SZÜRE VONATOK (Nincs vonatszám vagy tehervonat) ---
+        // --- SZÜRE VONATOK (Nincs vonatszám vagy tehervonat) ---
         function getMavColor(delay, trainNumber) {
             if (!useMavColors) return "#ffffff"; 
             
@@ -362,18 +364,15 @@
             const trainNumInt = parseInt(trainNumber, 10);
             const isFreightTrain = !isNaN(trainNumInt) && trainNumInt >= 40000;
 
-            // Ha nincs vonatszám, VAGY tehervonat (>= 40000)
             if (!hasTrainNumber || isFreightTrain) {
-                return "#888888"; // Szürke
+                return "#888888"; 
             }
 
-            // Normál személyvonatok késés alapján
             if (delay < 5) return "#4caf50";       
             else if (delay < 15) return "#ffeb3b"; 
             else if (delay < 60) return "#ff9800"; 
             else return "#f44336";                 
         }
-        // ------------------------------------------------------------
 
         function toggleFilterPanel() {
             filterPanel.classList.toggle('show');
@@ -438,7 +437,6 @@
             const hasHeading = heading !== null && heading !== undefined;
             const rotation = hasHeading ? heading : 0; 
             
-            // A szín kiválasztásához most már átadjuk a vonatszámot is!
             const fillColor = getMavColor(delay, trainNumber);
 
             const arrowElement = hasHeading ? `
