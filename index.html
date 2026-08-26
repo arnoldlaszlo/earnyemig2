@@ -196,35 +196,33 @@
         /* --- MOBIL NÉZET: GOMBOK MÉRETÉNEK CSÖKKENTÉSE 15%-KAL --- */
         @media (max-width: 768px) {
             .control-btn {
-                padding: 6px 10px; /* 8px 12px helyett */
-                font-size: 14px;   /* 16px helyett */
+                padding: 6px 10px; 
+                font-size: 14px;   
             }
 
             .filter-top-row #btn-all {
                 padding: 5px 0;
-                font-size: 11px;   /* 12px helyett */
+                font-size: 11px;   
             }
 
             .search-input {
-                padding: 6px;      /* 8px helyett */
-                font-size: 12px;   /* 14px helyett */
+                padding: 6px;      
+                font-size: 12px;   
             }
 
             .preset-btn {
-                padding: 5px 0;    /* 6px 0 helyett */
-                font-size: 11px;   /* 12px helyett */
+                padding: 5px 0;    
+                font-size: 11px;   
             }
 
             #timer-btn {
-                min-width: 34px;   /* 40px helyett */
+                min-width: 34px;   
             }
 
             #uic-toggle {
-                min-width: 42px;   /* 50px helyett */
+                min-width: 42px;   
             }
         }
-        /* -------------------------------------------------------- */
-
     </style>
 </head>
 <body>
@@ -270,21 +268,31 @@
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Térkép inicializálása alap zoom control beállításokkal
         const map = L.map('map', { zoomControl: false });
 
-        // --- DINAMIKUS TÉRKÉPNÉZET BEÁLLÍTÁSA (ASZTALI vs MOBIL) ---
         function setInitialMapBounds() {
             if (window.innerWidth <= 768) {
-                // MOBIL NÉZET: Dél-Dunántúl középen (kb. Kaposvár-Pécs térsége), 8-as nagyítással
                 map.setView([46.25, 17.90], 8);
             } else {
-                // ASZTALI NÉZET: Magyarország közepe, de jobban ráközelítve (8-as nagyítás)
                 map.setView([47.16, 19.50], 8); 
             }
         }
-        setInitialMapBounds(); // Azonnal lefuttatjuk induláskor
-        // -----------------------------------------------------------
+        setInitialMapBounds(); 
+
+        // --- ÚJ: PANELS BEZÁRÁSA TÉRKÉPRE KATTINTÁSKOR ---
+        const filterPanel = document.getElementById('filter-panel');
+        
+        // Kattintás a térképen eltünteti a panelt (a beállított szűrők megmaradnak)
+        map.on('click', function() {
+            filterPanel.classList.remove('show');
+        });
+
+        // Megakadályozzuk, hogy a panelekre (pl. gombokra vagy a keresőmezőre) 
+        // kattintás "átüssön" a térképre, és ezáltal bezárja a panelt.
+        L.DomEvent.disableClickPropagation(document.getElementById('filter-container'));
+        L.DomEvent.disableClickPropagation(document.getElementById('top-controls'));
+        L.DomEvent.disableClickPropagation(document.getElementById('bottom-left-controls'));
+        // --------------------------------------------------
 
         const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
@@ -332,14 +340,11 @@
         let activePresets = new Set(['all']);
         
         let useMavColors = false; 
-        
-        // 3-állapotú vezérlő: 0 = rejtett, 1 = UIC, 2 = UIC + Vonatszám + Késés
         let labelDisplayState = 0; 
 
         const timerBtn = document.getElementById('timer-btn');
         const uicToggle = document.getElementById('uic-toggle');
         const mapEl = document.getElementById('map');
-        const filterPanel = document.getElementById('filter-panel');
         const searchInput = document.getElementById('search-input');
         const colorToggleBtn = document.getElementById('color-toggle');
 
@@ -431,7 +436,6 @@
                     <path d="M12 4 L17 11 L13 11 L13 18 L11 18 L11 11 L7 11 Z" fill="#222222"/>
                 </g>` : '';
 
-            // --- 1. RÖVIDÍTETT UIC FELDOLGOZÁSA ---
             let shortUic = uic || "???";
             const cleanedUic = shortUic.replace(/\D/g, ''); 
 
@@ -447,7 +451,6 @@
                 shortUic = cleanedUic.substring(0, 3) + ' ' + cleanedUic.substring(3, 6);
             }
 
-            // --- 2. VONATSZÁM + KÉSÉS FELDOLGOZÁSA ---
             const hasTrainNumber = trainNumber !== 'Ismeretlen' && trainNumber.toString().trim() !== '';
             const shortTrainNumber = hasTrainNumber ? trainNumber : '-';
             const delayFormatted = delay > 0 ? `+${delay}` : `+0`;
