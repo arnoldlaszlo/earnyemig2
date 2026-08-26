@@ -145,9 +145,10 @@
             box-sizing: border-box;
         }
 
+        /* Gomb specifikus stílusok */
         #timer-btn { color: #ff5555; min-width: 40px; }
+        #uic-toggle { min-width: 50px; }
         #uic-toggle.active { background-color: #66b3ff; color: #111; border-color: #5599dd; }
-
         .color-active { background-color: #4caf50 !important; color: white !important; border-color: #388e3c !important;}
 
         .leaflet-tooltip.train-tooltip {
@@ -165,24 +166,33 @@
 
         .custom-div-icon { overflow: visible !important; }
         
-        .uic-bubble {
+        /* BUBORÉKOK (Közös alapstílus) */
+        .info-bubble {
             display: none;
             position: absolute;
-            top: -10px;
             left: 22px;
             background: #222222;
             border: 2px solid #ffffff;
             color: #ffffff;
-            padding: 2px 6px;
-            border-radius: 12px;
+            padding: 3px 6px;
+            border-radius: 8px; /* Picit szögletesebb, hogy a két sornak jól álljon */
             font-size: 11px;
             font-weight: bold;
             box-shadow: 0 2px 4px rgba(0,0,0,0.5);
             white-space: nowrap;
             pointer-events: none;
             z-index: 10;
+            line-height: 1.3;
+            text-align: center; /* Ha két soros, akkor középre lesz igazítva */
         }
+
+        /* Térkép állapotok szerinti megjelenítés és pozicionálás */
+        .uic-bubble { top: -10px; }
+        .train-bubble { top: -18px; } /* A két soros buborékot picit feljebb toljuk */
+
         .show-uic .uic-bubble { display: block; }
+        .show-train .train-bubble { display: block; }
+
     </style>
 </head>
 <body>
@@ -214,7 +224,7 @@
 
     <!-- Jobb felső vezérlők -->
     <div id="top-controls">
-        <div id="uic-toggle" class="control-btn" onclick="toggleUIC()" title="UIC számok ki/bekapcsolása">UIC</div>
+        <div id="uic-toggle" class="control-btn" onclick="toggleUIC()" title="Feliratok léptetése">UIC</div>
         <div id="timer-btn" class="control-btn" onclick="manualRefresh()" title="Azonnali frissítés">30</div>
     </div>
 
@@ -276,6 +286,9 @@
         let activePresets = new Set(['all']);
         
         let useMavColors = false; 
+        
+        // 3-állapotú vezérlő: 0 = rejtett, 1 = UIC, 2 = UIC + Vonatszám + Késés
+        let labelDisplayState = 0; 
 
         const timerBtn = document.getElementById('timer-btn');
         const uicToggle = document.getElementById('uic-toggle');
@@ -337,9 +350,26 @@
             renderLocomotives();
         }
 
+        // --- 3-ÁLLAPOTÚ FELIRAT LÉPTETŐ ---
         function toggleUIC() {
-            const isActive = mapEl.classList.toggle('show-uic');
-            isActive ? uicToggle.classList.add('active') : uicToggle.classList.remove('active');
+            labelDisplayState = (labelDisplayState + 1) % 3;
+            
+            // Mindkét osztály törlése
+            mapEl.classList.remove('show-uic', 'show-train');
+            
+            if (labelDisplayState === 1) {
+                mapEl.classList.add('show-uic');
+                uicToggle.classList.add('active');
+                uicToggle.textContent = 'UIC';
+            } else if (labelDisplayState === 2) {
+                mapEl.classList.add('show-train');
+                uicToggle.classList.add('active');
+                uicToggle.textContent = 'VSz';
+            } else {
+                // Állapot 0 (Kikapcsolva)
+                uicToggle.classList.remove('active');
+                uicToggle.textContent = 'UIC';
+            }
         }
 
         function manualRefresh() {
@@ -348,7 +378,7 @@
             fetchLocomotiveData();
         }
 
-        function createDirectionalIcon(heading, uic, delay) {
+        function createDirectionalIcon(heading, uic, delay, trainNumber) {
             const hasHeading = heading !== null && heading !== undefined;
             const rotation = hasHeading ? heading : 0; 
             const fillColor = getMavColor(delay);
@@ -358,18 +388,21 @@
                     <path d="M12 4 L17 11 L13 11 L13 18 L11 18 L11 11 L7 11 Z" fill="#222222"/>
                 </g>` : '';
 
-            // --- UIC RÖVIDÍTÉSE ---
+            // --- 1. RÖVIDÍTETT UIC FELDOLGOZÁSA (Első sor) ---
             let shortUic = uic || "???";
-            const cleanedUic = shortUic.replace(/\D/g, ''); // Kiveszünk mindent ami nem szám
+            const cleanedUic = shortUic.replace(/\D/g, ''); 
 
             if (cleanedUic.length === 12) {
-                // A szabványos 12 jegyű formátumnál az 5,6,7. karakter a típus, 8,9,10. a sorszám (0-tól indexelve)
                 shortUic = cleanedUic.substring(5, 8) + ' ' + cleanedUic.substring(8, 11);
             } else if (cleanedUic.length === 7 || cleanedUic.length === 6) {
-                // Ha már eleve rövid (pl. 4181036 vagy 418103)
                 shortUic = cleanedUic.substring(0, 3) + ' ' + cleanedUic.substring(3, 6);
             }
-            // ----------------------
+
+            // --- 2. VONATSZÁM + KÉSÉS FELDOLGOZÁSA (Második sor) ---
+            const hasTrainNumber = trainNumber !== 'Ismeretlen' && trainNumber.toString().trim() !== '';
+            const shortTrainNumber = hasTrainNumber ? trainNumber : '-';
+            const delayFormatted = delay > 0 ? `+${delay}` : `+0`;
+            const trainInfoText = `${shortTrainNumber}, ${delayFormatted}`;
 
             const iconHtml = `
                 <div style="position: relative; width: 24px; height: 24px;">
@@ -377,7 +410,14 @@
                         <circle cx="12" cy="12" r="10" fill="${fillColor}" stroke="#222222" stroke-width="2"/>
                         ${arrowElement}
                     </svg>
-                    <div class="uic-bubble">${shortUic}</div>
+                    <!-- 1. állapot: Csak UIC -->
+                    <div class="info-bubble uic-bubble">${shortUic}</div>
+                    
+                    <!-- 2. állapot: UIC a felső sorban, Vonatszám és késés az alsóban -->
+                    <div class="info-bubble train-bubble">
+                        ${shortUic}<br>
+                        ${trainInfoText}
+                    </div>
                 </div>`;
 
             return L.divIcon({
@@ -441,7 +481,6 @@
                 const heading = loco.heading !== undefined ? loco.heading : (loco.Heading !== undefined ? loco.Heading : loco.direction);
 
                 if (lat && lon) {
-                    // A részletes tooltip továbbra is a teljes pályaszámot jeleníti meg
                     const tooltipContent = `
                         <div>
                             <b>UIC:</b> ${uic}<br>
@@ -452,7 +491,7 @@
                     `;
 
                     const marker = L.marker([lat, lon], {
-                        icon: createDirectionalIcon(heading, uic, delayMin)
+                        icon: createDirectionalIcon(heading, uic, delayMin, trainNumber)
                     });
 
                     marker.bindTooltip(tooltipContent, {
