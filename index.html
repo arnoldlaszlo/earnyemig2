@@ -72,17 +72,23 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
             flex-direction: column;
             gap: 10px;
-            width: 340px; 
+            width: 360px; /* Picit szélesebb, hogy a 4 oszlop kényelmesen elférjen */
         }
 
         #filter-panel.show {
             display: flex;
         }
 
-        .preset-buttons {
+        /* Felső sor: Összes gomb és keresőmező */
+        .filter-top-row {
             display: flex;
-            flex-wrap: wrap;
             gap: 5px;
+            width: 100%;
+        }
+
+        .filter-top-row #btn-all {
+            /* Pontosan akkora lesz, mint az alsó rácsban egy gomb (25% - a hézagok arányos része) */
+            flex: 0 0 calc(25% - 3.75px);
         }
 
         .search-input {
@@ -91,13 +97,22 @@
             color: #fff;
             padding: 8px;
             border-radius: 4px;
-            width: 100%;
+            flex: 1; /* Kitölti a maradék helyet az "Összes" gomb mellett */
             box-sizing: border-box;
             font-size: 14px;
         }
+        
         .search-input:focus {
             outline: none;
             border-color: #66b3ff;
+        }
+
+        /* Alsó sorok (Rácsos elrendezés 4 egyforma oszloppal) */
+        .preset-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            width: 100%;
         }
 
         .control-btn {
@@ -120,9 +135,10 @@
         .control-btn.active-filter { background: #66b3ff; color: #111; border-color: #5599dd; }
 
         .preset-btn {
-            flex: 1 1 auto;
             padding: 6px;
             font-size: 13px;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         #timer-btn { color: #ff5555; min-width: 40px; }
@@ -173,18 +189,23 @@
         </div>
         
         <div id="filter-panel">
-            <div class="preset-buttons">
+            <!-- Felső sor: Összes gomb + Keresőmező -->
+            <div class="filter-top-row">
                 <button id="btn-all" class="control-btn preset-btn active-filter" onclick="togglePreset('all', this)">Összes</button>
-                <button class="control-btn preset-btn" onclick="togglePreset('630', this)">630</button>
-                <button class="control-btn preset-btn" onclick="togglePreset('431', this)">431</button>
-                <button class="control-btn preset-btn" onclick="togglePreset('43X', this)">43X</button>
-                <button class="control-btn preset-btn" onclick="togglePreset('628', this)">628</button>
-                <button class="control-btn preset-btn" onclick="togglePreset('418', this)">418</button>
+                <input type="text" id="search-input" class="search-input" placeholder="Keresés (Pl.: 117, 415...)" onkeyup="renderLocomotives()">
+            </div>
+            
+            <!-- Alsó sorok (Rács): Specifikus gombok sorrendben -->
+            <div class="preset-buttons">
                 <button class="control-btn preset-btn" onclick="togglePreset('VSz', this)" title="Csak vonatszámmal rendelkezők">VSz</button>
                 <button class="control-btn preset-btn" onclick="togglePreset('NVSz', this)" title="Vonatszám nélküliek">NVSz</button>
+                <button class="control-btn preset-btn" onclick="togglePreset('630', this)">630</button>
+                <button class="control-btn preset-btn" onclick="togglePreset('431', this)">431</button>
+                <button class="control-btn preset-btn" onclick="togglePreset('628', this)">628</button>
+                <button class="control-btn preset-btn" onclick="togglePreset('418', this)">418</button>
+                <button class="control-btn preset-btn" onclick="togglePreset('43X', this)">43X</button>
                 <button class="control-btn preset-btn" onclick="togglePreset('T', this)" title="40000 és e feletti vonatszámok">T</button>
             </div>
-            <input type="text" id="search-input" class="search-input" placeholder="Keresés (Pl.: 117, 415...)" onkeyup="renderLocomotives()">
         </div>
     </div>
 
@@ -364,7 +385,6 @@
                 const trainNumber = loco.trainNumber || loco.TrainNumber || loco.flight || 'Ismeretlen';
                 const hasTrainNumber = trainNumber !== 'Ismeretlen' && trainNumber.toString().trim() !== '';
                 
-                // Vonatszám vizsgálata számként (A 40000+ ellenőrzéshez)
                 const trainNumInt = parseInt(trainNumber, 10);
                 const isT = !isNaN(trainNumInt) && trainNumInt >= 40000;
 
