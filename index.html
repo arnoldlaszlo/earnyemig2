@@ -53,6 +53,16 @@
             gap: 5px;
         }
 
+        /* BAL ALSÓ GOMB KONTÉNERE */
+        #bottom-left-controls {
+            position: absolute;
+            bottom: 25px;
+            left: 15px;
+            z-index: 1000;
+            display: flex;
+            gap: 5px;
+        }
+
         #filter-panel {
             display: none;
             background-color: rgba(30, 30, 30, 0.95);
@@ -118,6 +128,8 @@
         #timer-btn { color: #ff5555; min-width: 40px; }
         #uic-toggle.active { background-color: #66b3ff; color: #111; border-color: #5599dd; }
 
+        .color-active { background-color: #4caf50 !important; color: white !important; border-color: #388e3c !important;}
+
         .leaflet-tooltip.train-tooltip {
             background: rgba(30, 30, 30, 0.95);
             border: 1px solid #555;
@@ -170,6 +182,7 @@
                 <button class="control-btn preset-btn" onclick="togglePreset('418', this)">418</button>
                 <button class="control-btn preset-btn" onclick="togglePreset('VSz', this)" title="Csak vonatszámmal rendelkezők">VSz</button>
                 <button class="control-btn preset-btn" onclick="togglePreset('NVSz', this)" title="Vonatszám nélküliek">NVSz</button>
+                <button class="control-btn preset-btn" onclick="togglePreset('T', this)" title="40000 és e feletti vonatszámok">T</button>
             </div>
             <input type="text" id="search-input" class="search-input" placeholder="Keresés (Pl.: 117, 415...)" onkeyup="renderLocomotives()">
         </div>
@@ -177,8 +190,13 @@
 
     <!-- Jobb felső vezérlők -->
     <div id="top-controls">
-        <div id="timer-btn" class="control-btn" onclick="manualRefresh()" title="Azonnali frissítés">30</div>
         <div id="uic-toggle" class="control-btn" onclick="toggleUIC()" title="UIC számok ki/bekapcsolása">UIC</div>
+        <div id="timer-btn" class="control-btn" onclick="manualRefresh()" title="Azonnali frissítés">30</div>
+    </div>
+
+    <!-- Bal alsó vezérlők (Színezés) -->
+    <div id="bottom-left-controls">
+        <div id="color-toggle" class="control-btn" onclick="toggleColors()" title="Váltás a késés alapú színezésre">🎨 Színezés</div>
     </div>
 
     <div id="map"></div>
@@ -215,16 +233,15 @@
             .then(data => {
                 L.geoJSON(data, {
                     style: {
-                        color: "#ffffff", // Fehér határvonal
-                        weight: 3,        // Vonalvastagság
-                        opacity: 0.6,     // Átlátszóság
-                        fill: false       // Ne legyen kitöltése, csak vonal
+                        color: "#ffffff", 
+                        weight: 3,        
+                        opacity: 0.6,     
+                        fill: false       
                     },
-                    interactive: false    // Ne zavarjon az egeres kattintásoknál
+                    interactive: false    
                 }).addTo(map);
             })
             .catch(err => console.error("Hiba a határvonal betöltésekor:", err));
-        // ---------------------------------------------
 
         let markerGroup = L.layerGroup().addTo(map);
 
@@ -234,14 +251,35 @@
         
         let allLocomotives = []; 
         let activePresets = new Set(['all']);
+        
+        let useMavColors = false; 
 
         const timerBtn = document.getElementById('timer-btn');
         const uicToggle = document.getElementById('uic-toggle');
         const mapEl = document.getElementById('map');
         const filterPanel = document.getElementById('filter-panel');
         const searchInput = document.getElementById('search-input');
+        const colorToggleBtn = document.getElementById('color-toggle');
 
-        // --- SZŰRŐ FELÜLET LOGIKÁJA ---
+        function toggleColors() {
+            useMavColors = !useMavColors;
+            if (useMavColors) {
+                colorToggleBtn.classList.add('color-active');
+            } else {
+                colorToggleBtn.classList.remove('color-active');
+            }
+            renderLocomotives(); 
+        }
+
+        function getMavColor(delay) {
+            if (!useMavColors) return "#ffffff"; 
+            
+            if (delay < 5) return "#4caf50";       
+            else if (delay < 15) return "#ffeb3b"; 
+            else if (delay < 60) return "#ff9800"; 
+            else return "#f44336";                 
+        }
+
         function toggleFilterPanel() {
             filterPanel.classList.toggle('show');
         }
@@ -276,7 +314,6 @@
             renderLocomotives();
         }
 
-        // --- TÉRKÉP FUNKCIÓK ---
         function toggleUIC() {
             const isActive = mapEl.classList.toggle('show-uic');
             isActive ? uicToggle.classList.add('active') : uicToggle.classList.remove('active');
@@ -288,9 +325,12 @@
             fetchLocomotiveData();
         }
 
-        function createDirectionalIcon(heading, uic) {
+        function createDirectionalIcon(heading, uic, delay) {
             const hasHeading = heading !== null && heading !== undefined;
             const rotation = hasHeading ? heading : 0; 
+            
+            const fillColor = getMavColor(delay);
+
             const arrowElement = hasHeading ? `
                 <g transform="rotate(${rotation} 12 12)">
                     <path d="M12 4 L17 11 L13 11 L13 18 L11 18 L11 11 L7 11 Z" fill="#222222"/>
@@ -299,7 +339,7 @@
             const iconHtml = `
                 <div style="position: relative; width: 24px; height: 24px;">
                     <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="12" cy="12" r="10" fill="#ffffff" stroke="#222222" stroke-width="2"/>
+                        <circle cx="12" cy="12" r="10" fill="${fillColor}" stroke="#222222" stroke-width="2"/>
                         ${arrowElement}
                     </svg>
                     <div class="uic-bubble">${uic}</div>
@@ -313,8 +353,6 @@
             });
         }
 
-        // --- ADATFELDOLGOZÁS ÉS MEGJELENÍTÉS ---
-        
         function renderLocomotives() {
             markerGroup.clearLayers();
             
@@ -325,8 +363,11 @@
                 const uic = loco.uic || loco.UIC || 'Ismeretlen';
                 const trainNumber = loco.trainNumber || loco.TrainNumber || loco.flight || 'Ismeretlen';
                 const hasTrainNumber = trainNumber !== 'Ismeretlen' && trainNumber.toString().trim() !== '';
+                
+                // Vonatszám vizsgálata számként (A 40000+ ellenőrzéshez)
+                const trainNumInt = parseInt(trainNumber, 10);
+                const isT = !isNaN(trainNumInt) && trainNumInt >= 40000;
 
-                // 1. TÖBBSZÖRÖS SZŰRŐ (PRESET) ELLENŐRZÉSE
                 let matchesPreset = false;
                 
                 if (activePresets.has('all')) {
@@ -339,11 +380,11 @@
                     if (activePresets.has('418') && uic.includes('418')) matchesPreset = true;
                     if (activePresets.has('VSz') && hasTrainNumber) matchesPreset = true;
                     if (activePresets.has('NVSz') && !hasTrainNumber) matchesPreset = true;
+                    if (activePresets.has('T') && isT) matchesPreset = true;
                 }
 
                 if (!matchesPreset) return;
 
-                // 2. SZÖVEGES KERESŐ ELLENŐRZÉSE
                 if (searchTerms.length > 0) {
                     let matchesSearch = false;
                     for (const term of searchTerms) {
@@ -359,8 +400,10 @@
                 const lon = loco.lon || loco.lng || loco.Lon || loco.Lng || loco.longitude || loco.Longitude;
                 const from = loco.from || loco.From || loco.origin || '-';
                 const to = loco.to || loco.To || loco.destination || '-';
-                const delayMin = loco.delayMin || loco.delay || 0;
+                
+                const delayMin = parseInt(loco.delayMin || loco.delay || 0, 10);
                 const delayText = delayMin > 0 ? `<span class="delay-warning">+${delayMin} perc</span>` : '0 perc';
+                
                 const heading = loco.heading !== undefined ? loco.heading : (loco.Heading !== undefined ? loco.Heading : loco.direction);
 
                 if (lat && lon) {
@@ -374,7 +417,7 @@
                     `;
 
                     const marker = L.marker([lat, lon], {
-                        icon: createDirectionalIcon(heading, uic)
+                        icon: createDirectionalIcon(heading, uic, delayMin)
                     });
 
                     marker.bindTooltip(tooltipContent, {
