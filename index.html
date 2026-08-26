@@ -72,8 +72,8 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
             flex-direction: column;
             gap: 8px;
-            width: 320px; /* Kisebb alapszélesség */
-            max-width: calc(100vw - 30px); /* Reszponzív: sosem lóg ki a képernyőről! */
+            width: 320px; 
+            max-width: calc(100vw - 30px);
             box-sizing: border-box;
         }
 
@@ -103,7 +103,7 @@
             flex: 1; 
             box-sizing: border-box;
             font-size: 14px;
-            min-width: 0; /* Hogy flexbox-ban biztosan össze tudjon húzódni */
+            min-width: 0;
         }
         
         .search-input:focus {
@@ -111,7 +111,7 @@
             border-color: #66b3ff;
         }
 
-        /* Alsó sorok (Rácsos elrendezés 4 egyforma oszloppal) */
+        /* Alsó sorok */
         .preset-buttons {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -139,8 +139,8 @@
         .control-btn.active-filter { background: #66b3ff; color: #111; border-color: #5599dd; }
 
         .preset-btn {
-            padding: 6px 0; /* Kisebb belső margó a gomboknak */
-            font-size: 12px; /* Kisebb betűméret, hogy keskenyen is kiférjen a szöveg */
+            padding: 6px 0; 
+            font-size: 12px; 
             width: 100%;
             box-sizing: border-box;
         }
@@ -164,6 +164,7 @@
         .delay-warning { color: #ff5555; font-weight: bold; }
 
         .custom-div-icon { overflow: visible !important; }
+        
         .uic-bubble {
             display: none;
             position: absolute;
@@ -193,13 +194,11 @@
         </div>
         
         <div id="filter-panel">
-            <!-- Felső sor: Összes gomb + Keresőmező -->
             <div class="filter-top-row">
                 <button id="btn-all" class="control-btn preset-btn active-filter" onclick="togglePreset('all', this)">Összes</button>
                 <input type="text" id="search-input" class="search-input" placeholder="Keresés (Pl.: 117, 415...)" onkeyup="renderLocomotives()">
             </div>
             
-            <!-- Alsó sorok (Rács): Specifikus gombok sorrendben -->
             <div class="preset-buttons">
                 <button class="control-btn preset-btn" onclick="togglePreset('VSz', this)" title="Csak vonatszámmal rendelkezők">VSz</button>
                 <button class="control-btn preset-btn" onclick="togglePreset('NVSz', this)" title="Vonatszám nélküliek">NVSz</button>
@@ -252,7 +251,6 @@
         L.control.layers(baseMaps, overlayMaps, {position: 'bottomright'}).addTo(map);
         L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-        // --- MAGYARORSZÁG HATÁRVONALÁNAK BETÖLTÉSE ---
         fetch('https://nominatim.openstreetmap.org/search?country=Hungary&polygon_geojson=1&format=geojson')
             .then(response => response.json())
             .then(data => {
@@ -353,7 +351,6 @@
         function createDirectionalIcon(heading, uic, delay) {
             const hasHeading = heading !== null && heading !== undefined;
             const rotation = hasHeading ? heading : 0; 
-            
             const fillColor = getMavColor(delay);
 
             const arrowElement = hasHeading ? `
@@ -361,13 +358,26 @@
                     <path d="M12 4 L17 11 L13 11 L13 18 L11 18 L11 11 L7 11 Z" fill="#222222"/>
                 </g>` : '';
 
+            // --- UIC RÖVIDÍTÉSE ---
+            let shortUic = uic || "???";
+            const cleanedUic = shortUic.replace(/\D/g, ''); // Kiveszünk mindent ami nem szám
+
+            if (cleanedUic.length === 12) {
+                // A szabványos 12 jegyű formátumnál az 5,6,7. karakter a típus, 8,9,10. a sorszám (0-tól indexelve)
+                shortUic = cleanedUic.substring(5, 8) + ' ' + cleanedUic.substring(8, 11);
+            } else if (cleanedUic.length === 7 || cleanedUic.length === 6) {
+                // Ha már eleve rövid (pl. 4181036 vagy 418103)
+                shortUic = cleanedUic.substring(0, 3) + ' ' + cleanedUic.substring(3, 6);
+            }
+            // ----------------------
+
             const iconHtml = `
                 <div style="position: relative; width: 24px; height: 24px;">
                     <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <circle cx="12" cy="12" r="10" fill="${fillColor}" stroke="#222222" stroke-width="2"/>
                         ${arrowElement}
                     </svg>
-                    <div class="uic-bubble">${uic}</div>
+                    <div class="uic-bubble">${shortUic}</div>
                 </div>`;
 
             return L.divIcon({
@@ -431,6 +441,7 @@
                 const heading = loco.heading !== undefined ? loco.heading : (loco.Heading !== undefined ? loco.Heading : loco.direction);
 
                 if (lat && lon) {
+                    // A részletes tooltip továbbra is a teljes pályaszámot jeleníti meg
                     const tooltipContent = `
                         <div>
                             <b>UIC:</b> ${uic}<br>
