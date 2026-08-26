@@ -66,13 +66,15 @@
         #filter-panel {
             display: none;
             background-color: rgba(30, 30, 30, 0.95);
-            padding: 12px;
+            padding: 10px;
             border-radius: 8px;
             border: 1px solid #444;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
             flex-direction: column;
-            gap: 10px;
-            width: 360px; /* Picit szélesebb, hogy a 4 oszlop kényelmesen elférjen */
+            gap: 8px;
+            width: 320px; /* Kisebb alapszélesség */
+            max-width: calc(100vw - 30px); /* Reszponzív: sosem lóg ki a képernyőről! */
+            box-sizing: border-box;
         }
 
         #filter-panel.show {
@@ -87,8 +89,9 @@
         }
 
         .filter-top-row #btn-all {
-            /* Pontosan akkora lesz, mint az alsó rácsban egy gomb (25% - a hézagok arányos része) */
             flex: 0 0 calc(25% - 3.75px);
+            padding: 6px 0; 
+            font-size: 12px;
         }
 
         .search-input {
@@ -97,9 +100,10 @@
             color: #fff;
             padding: 8px;
             border-radius: 4px;
-            flex: 1; /* Kitölti a maradék helyet az "Összes" gomb mellett */
+            flex: 1; 
             box-sizing: border-box;
             font-size: 14px;
+            min-width: 0; /* Hogy flexbox-ban biztosan össze tudjon húzódni */
         }
         
         .search-input:focus {
@@ -135,8 +139,8 @@
         .control-btn.active-filter { background: #66b3ff; color: #111; border-color: #5599dd; }
 
         .preset-btn {
-            padding: 6px;
-            font-size: 13px;
+            padding: 6px 0; /* Kisebb belső margó a gomboknak */
+            font-size: 12px; /* Kisebb betűméret, hogy keskenyen is kiférjen a szöveg */
             width: 100%;
             box-sizing: border-box;
         }
