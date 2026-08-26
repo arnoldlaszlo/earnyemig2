@@ -63,6 +63,21 @@
             gap: 5px;
         }
 
+        /* ÚJ: GPS GOMB A JOBB ALSÓ SAROKBAN A RÉTEGEK MELLÉ */
+        #gps-btn {
+            position: absolute;
+            bottom: 10px;
+            right: 55px; /* Pontosan a Leaflet rétegek gomb mellé kerül */
+            z-index: 999;
+            width: 34px;
+            height: 34px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
         #filter-panel {
             display: none;
             background-color: rgba(30, 30, 30, 0.95);
@@ -233,12 +248,36 @@
         <div id="color-toggle" class="control-btn" onclick="toggleColors()" title="Váltás a késés alapú színezésre">🎨 Színezés</div>
     </div>
 
+    <!-- GPS Gomb (Jobb alsó) -->
+    <div id="gps-btn" class="control-btn" onclick="locateUser()" title="Saját helyzet (40 km körzetben)">📍</div>
+
     <div id="map"></div>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        const map = L.map('map', { zoomControl: false }).setView([47.1625, 19.5033], 7);
+        // Térkép inicializálása alap kezdőpontok megadása NÉLKÜL (ezt az új függvény kezeli)
+        const map = L.map('map', { zoomControl: false });
+
+        // --- DINAMIKUS TÉRKÉPNÉZET BEÁLLÍTÁSA (ASZTALI vs MOBIL) ---
+        function setInitialMapBounds() {
+            if (window.innerWidth <= 768) {
+                // MOBIL NÉZET: Nyugat-Magyarország. A határok megadásával a Leaflet 
+                // automatikusan úgy állítja a zoomot, hogy magasságban kitöltse a képernyőt.
+                map.fitBounds([
+                    [45.74, 16.11], // Délnyugat (kb. Őrség)
+                    [48.00, 18.50]  // Északkelet (kb. Balaton északi sávja)
+                ]);
+            } else {
+                // ASZTALI NÉZET: Egész Magyarország kitölti a képernyőt
+                map.fitBounds([
+                    [45.74, 16.11], // Délnyugat
+                    [48.58, 22.90]  // Északkelet (Záhony)
+                ]);
+            }
+        }
+        setInitialMapBounds(); // Azonnal lefuttatjuk induláskor
+        // -----------------------------------------------------------
 
         const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
@@ -286,8 +325,9 @@
         let activePresets = new Set(['all']);
         
         let useMavColors = false; 
-        
         let labelDisplayState = 0; 
+        
+        let myLocationMarker = null; // A saját helyzetünk markerének változója
 
         const timerBtn = document.getElementById('timer-btn');
         const uicToggle = document.getElementById('uic-toggle');
@@ -295,6 +335,49 @@
         const filterPanel = document.getElementById('filter-panel');
         const searchInput = document.getElementById('search-input');
         const colorToggleBtn = document.getElementById('color-toggle');
+
+        // --- GPS HELYZET LEKÉRÉSE ÉS 40 KM-ES NÉZET BEÁLLÍTÁSA ---
+        function locateUser() {
+            if (!navigator.geolocation) {
+                alert("A böngésződ nem támogatja a helymeghatározást.");
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+
+                    // Ha már volt kék pontunk a térképen, töröljük a régit
+                    if (myLocationMarker) {
+                        map.removeLayer(myLocationMarker);
+                    }
+
+                    // Kék pulzáló/kiemelt pont a saját helyzetünknek
+                    myLocationMarker = L.circleMarker([lat, lon], {
+                        radius: 7,
+                        fillColor: "#007bff",
+                        color: "#ffffff",
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 0.9
+                    }).addTo(map);
+
+                    myLocationMarker.bindPopup("Itt vagy most!").openPopup();
+
+                    // Láthatatlan 40km-es sugarú kört húzunk (40,000 méter)
+                    // és arra kérjük a térképet, hogy méretezze rá a képernyőt!
+                    const circleForZoom = L.circle([lat, lon], { radius: 40000 });
+                    map.fitBounds(circleForZoom.getBounds());
+                },
+                (error) => {
+                    alert("Nem sikerült lekérni a helyzetedet. Ellenőrizd, hogy engedélyezted-e a helyadatokat!");
+                    console.error("GPS Hiba:", error);
+                },
+                { enableHighAccuracy: true } // Kéri a minél pontosabb adatot (pl. bekapcsolt GPS modultól)
+            );
+        }
+        // ---------------------------------------------------------
 
         function toggleColors() {
             useMavColors = !useMavColors;
@@ -384,16 +467,13 @@
                     <path d="M12 4 L17 11 L13 11 L13 18 L11 18 L11 11 L7 11 Z" fill="#222222"/>
                 </g>` : '';
 
-            // --- 1. RÖVIDÍTETT UIC FELDOLGOZÁSA (Okosabb levágás) ---
             let shortUic = uic || "???";
             const cleanedUic = shortUic.replace(/\D/g, ''); 
 
             if (cleanedUic.length === 12) {
-                // Ha 8-assal kezdődik a sorozat (pl. 8055), akkor 4 számjegyet veszünk
                 if (cleanedUic.charAt(4) === '8') {
                     shortUic = cleanedUic.substring(4, 8) + ' ' + cleanedUic.substring(8, 11);
                 } else {
-                    // Egyébként a szokásos 3 (pl. 0418 -> 418)
                     shortUic = cleanedUic.substring(5, 8) + ' ' + cleanedUic.substring(8, 11);
                 }
             } else if (cleanedUic.length >= 7 && cleanedUic.charAt(0) === '8') {
@@ -402,7 +482,6 @@
                 shortUic = cleanedUic.substring(0, 3) + ' ' + cleanedUic.substring(3, 6);
             }
 
-            // --- 2. VONATSZÁM + KÉSÉS FELDOLGOZÁSA (Második sor) ---
             const hasTrainNumber = trainNumber !== 'Ismeretlen' && trainNumber.toString().trim() !== '';
             const shortTrainNumber = hasTrainNumber ? trainNumber : '-';
             const delayFormatted = delay > 0 ? `+${delay}` : `+0`;
