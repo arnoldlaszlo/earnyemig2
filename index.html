@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mozdonykereső - Holavonat.is (EMIG)</title>
+    <title>Mozdonykereső - Holavonat.is (EMIG) - Dark Mode</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -15,31 +15,84 @@
             height: 100%;
             width: 100%;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
         }
         
         #map {
             height: 100%;
             width: 100%;
         }
+
+        .leaflet-tile-pane {
+            filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+        }
         
-        /* Új, kombinált vezérlő panel a jobb felső sarokban */
+        /* Jobb felső vezérlő (Eredeti) */
         #top-controls {
             position: absolute;
             top: 15px;
             right: 15px;
-            background-color: rgba(255, 255, 255, 0.95);
+            background-color: rgba(30, 30, 30, 0.95);
             padding: 5px;
             border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
             z-index: 1000;
             display: flex;
             gap: 5px;
-            border: 1px solid #ccc;
+            border: 1px solid #444;
+        }
+
+        /* BAL FELSŐ SZŰRŐ FELÜLET */
+        #filter-container {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        #filter-panel {
+            display: none;
+            background-color: rgba(30, 30, 30, 0.95);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            flex-direction: column;
+            gap: 10px;
+            width: 280px;
+        }
+
+        #filter-panel.show {
+            display: flex;
+        }
+
+        .preset-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .search-input {
+            background: #222;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 8px;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: #66b3ff;
         }
 
         .control-btn {
-            background: #f8f9fa;
-            border: 1px solid #ddd;
+            background: #2a2a2a;
+            border: 1px solid #444;
             border-radius: 4px;
             padding: 8px 12px;
             font-size: 16px;
@@ -49,74 +102,77 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #333;
+            color: #ffffff;
             transition: background-color 0.2s, color 0.2s, border-color 0.2s;
         }
 
-        .control-btn:hover {
-            background: #e2e6ea;
+        .control-btn:hover { background: #3a3a3a; }
+        .control-btn.active-filter { background: #66b3ff; color: #111; border-color: #5599dd; }
+
+        .preset-btn {
+            flex: 1 1 auto;
+            padding: 6px;
+            font-size: 13px;
         }
 
-        /* Számláló gomb egyedi stílusa */
-        #timer-btn {
-            color: #d32f2f;
-            min-width: 40px;
-        }
+        #timer-btn { color: #ff5555; min-width: 40px; }
+        #uic-toggle.active { background-color: #66b3ff; color: #111; border-color: #5599dd; }
 
-        /* UIC gomb aktív állapota */
-        #uic-toggle.active {
-            background-color: #0056b3;
-            color: white;
-            border-color: #004494;
-        }
-
-        .train-tooltip {
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid #666;
+        .leaflet-tooltip.train-tooltip {
+            background: rgba(30, 30, 30, 0.95);
+            border: 1px solid #555;
             border-radius: 4px;
             padding: 8px;
             font-size: 14px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.6);
         }
-        .train-tooltip b {
-            color: #0056b3;
-        }
-        .delay-warning {
-            color: #d32f2f;
-            font-weight: bold;
-        }
+        .leaflet-tooltip-top.train-tooltip::before { border-top-color: rgba(30, 30, 30, 0.95); }
+        .train-tooltip b { color: #66b3ff; }
+        .delay-warning { color: #ff5555; font-weight: bold; }
 
-        /* --- CSS SZABÁLYOK AZ UIC BUBORÉKOKHOZ --- */
-        .custom-div-icon {
-            overflow: visible !important;
-        }
-
+        .custom-div-icon { overflow: visible !important; }
         .uic-bubble {
             display: none;
             position: absolute;
             top: -10px;
             left: 22px;
-            background: #ffffff;
-            border: 2px solid #0056b3;
-            color: #333;
+            background: #222222;
+            border: 2px solid #ffffff;
+            color: #ffffff;
             padding: 2px 6px;
             border-radius: 12px;
             font-size: 11px;
             font-weight: bold;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
             white-space: nowrap;
             pointer-events: none;
             z-index: 10;
         }
-
-        /* Ha a térkép megkapja a 'show-uic' osztályt, megjelennek a buborékok */
-        .show-uic .uic-bubble {
-            display: block;
-        }
+        .show-uic .uic-bubble { display: block; }
     </style>
 </head>
 <body>
 
+    <!-- Bal felső szűrő kontroller -->
+    <div id="filter-container">
+        <div id="filter-toggle" class="control-btn" style="width: max-content;" onclick="toggleFilterPanel()">
+            🔍 Szűrők
+        </div>
+        
+        <div id="filter-panel">
+            <div class="preset-buttons">
+                <button class="control-btn preset-btn active-filter" onclick="setPreset('all', this)">Összes</button>
+                <button class="control-btn preset-btn" onclick="setPreset('630', this)">630</button>
+                <button class="control-btn preset-btn" onclick="setPreset('430', this)">430 (430/431/433)</button>
+                <button class="control-btn preset-btn" onclick="setPreset('628', this)">628</button>
+                <button class="control-btn preset-btn" onclick="setPreset('418', this)">418</button>
+            </div>
+            <input type="text" id="search-input" class="search-input" placeholder="Keresés (UIC, vonatszám...)" onkeyup="renderLocomotives()">
+        </div>
+    </div>
+
+    <!-- Jobb felső vezérlők -->
     <div id="top-controls">
         <div id="timer-btn" class="control-btn" onclick="manualRefresh()" title="Azonnali frissítés">30</div>
         <div id="uic-toggle" class="control-btn" onclick="toggleUIC()" title="UIC számok ki/bekapcsolása">UIC</div>
@@ -127,87 +183,93 @@
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        const map = L.map('map').setView([47.1625, 19.5033], 7);
+        // Zoom control kikapcsolása inicializáláskor (hogy áthelyezhessük)
+        const map = L.map('map', { zoomControl: false }).setView([47.1625, 19.5033], 7);
 
-        // 1. Alaptérkép 1: OpenStreetMap
         const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
 
-        // 2. Alaptérkép 2: OpenTopoMap
         const topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
             maxZoom: 17,
-            attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a>'
+            attribution: '&copy; OpenStreetMap | &copy; OpenTopoMap'
         });
 
-        // 3. Rátét (Overlay): OpenRailwayMap
         const ormLayer = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
             maxZoom: 19,
-            attribution: '&copy; <a href="https://www.openrailwaymap.org/">OpenRailwayMap</a>'
+            attribution: '&copy; OpenRailwayMap'
         }).addTo(map);
 
-        // Rétegválasztó vezérlő beállítása
-        const baseMaps = {
-            "OpenStreetMap": osmLayer,
-            "OpenTopoMap": topoLayer
-        };
+        const baseMaps = { "Sötét Térkép (OSM)": osmLayer, "Sötét Topo Térkép": topoLayer };
+        const overlayMaps = { "Vasúthálózat (ORM)": ormLayer };
 
-        const overlayMaps = {
-            "Vasúthálózat (ORM)": ormLayer
-        };
-
-        // Kicsit lejjebb toljuk a Leaflet alapértelmezett rétegválasztóját, hogy ne takarja a dobozunkat
+        // 1. Rétegválasztó hozzáadása jobb alulra
         L.control.layers(baseMaps, overlayMaps, {position: 'bottomright'}).addTo(map);
+        
+        // 2. Zoom gombok hozzáadása jobb alulra (így a rétegek gomb fölé fog kerülni a Leaflet logikája szerint)
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-        // Mozdonyok marker csoportja
         let markerGroup = L.layerGroup().addTo(map);
 
         const DATA_URL = 'https://cdn.holavonat.is/emig_data_v1.json';
-        
         const UPDATE_INTERVAL = 30;
         let timeLeft = UPDATE_INTERVAL;
+        
+        // Globális változók a szűréshez és a nyers adatokhoz
+        let allLocomotives = []; 
+        let currentPreset = 'all';
+
         const timerBtn = document.getElementById('timer-btn');
         const uicToggle = document.getElementById('uic-toggle');
         const mapEl = document.getElementById('map');
+        const filterPanel = document.getElementById('filter-panel');
+        const searchInput = document.getElementById('search-input');
 
-        // UIC gomb kezelése
-        function toggleUIC() {
-            const isActive = mapEl.classList.toggle('show-uic');
-            if (isActive) {
-                uicToggle.classList.add('active');
-            } else {
-                uicToggle.classList.remove('active');
-            }
+        // --- SZŰRŐ FELÜLET LOGIKÁJA ---
+        function toggleFilterPanel() {
+            filterPanel.classList.toggle('show');
         }
 
-        // Manuális frissítés kattintásra
+        function setPreset(preset, btnElement) {
+            currentPreset = preset;
+            
+            // Gombok stílusának frissítése
+            document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active-filter'));
+            btnElement.classList.add('active-filter');
+            
+            // Azonnali újrarajzolás a meglévő adatokkal
+            renderLocomotives();
+        }
+
+        // --- TÉRKÉP FUNKCIÓK ---
+        function toggleUIC() {
+            const isActive = mapEl.classList.toggle('show-uic');
+            isActive ? uicToggle.classList.add('active') : uicToggle.classList.remove('active');
+        }
+
         function manualRefresh() {
             timeLeft = UPDATE_INTERVAL;
             timerBtn.textContent = timeLeft;
             fetchLocomotiveData();
         }
 
-        // SVG Ikon generátor
         function createDirectionalIcon(heading, uic) {
             const hasHeading = heading !== null && heading !== undefined;
             const rotation = hasHeading ? heading : 0; 
-
             const arrowElement = hasHeading ? `
                 <g transform="rotate(${rotation} 12 12)">
-                    <path d="M12 4 L17 11 L13 11 L13 18 L11 18 L11 11 L7 11 Z" fill="white"/>
-                </g>
-            ` : '';
+                    <path d="M12 4 L17 11 L13 11 L13 18 L11 18 L11 11 L7 11 Z" fill="#222222"/>
+                </g>` : '';
 
             const iconHtml = `
                 <div style="position: relative; width: 24px; height: 24px;">
                     <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="12" cy="12" r="10" fill="#0056b3" stroke="white" stroke-width="2"/>
+                        <circle cx="12" cy="12" r="10" fill="#ffffff" stroke="#222222" stroke-width="2"/>
                         ${arrowElement}
                     </svg>
                     <div class="uic-bubble">${uic}</div>
-                </div>
-            `;
+                </div>`;
 
             return L.divIcon({
                 className: 'custom-div-icon',
@@ -217,6 +279,82 @@
             });
         }
 
+        // --- ADATFELDOLGOZÁS ÉS MEGJELENÍTÉS ---
+        
+        // Csak kirajzolja a memóriában lévő vonatokat a szűrők alapján
+        function renderLocomotives() {
+            markerGroup.clearLayers();
+            
+            const searchText = searchInput.value.toLowerCase().trim();
+
+            allLocomotives.forEach(loco => {
+                const uic = loco.uic || loco.UIC || 'Ismeretlen';
+                const trainNumber = loco.trainNumber || loco.TrainNumber || loco.flight || 'Ismeretlen';
+
+                // Alap 8055-ös szűrés (ahogy eredetileg is volt)
+                const is8055 = uic.replace(/\s+/g, '').includes('8055');
+                const hasTrainNumber = trainNumber !== 'Ismeretlen' && trainNumber.toString().trim() !== '';
+                if (is8055 && !hasTrainNumber) return; 
+
+                // 1. ELŐRE DEFINIÁLT SZŰRŐ (PRESET) ELLENŐRZÉSE
+                let matchesPreset = false;
+                if (currentPreset === 'all') {
+                    matchesPreset = true;
+                } else if (currentPreset === '630' && uic.includes('630')) {
+                    matchesPreset = true;
+                } else if (currentPreset === '430' && (uic.includes('430') || uic.includes('431') || uic.includes('433'))) {
+                    matchesPreset = true;
+                } else if (currentPreset === '628' && uic.includes('628')) {
+                    matchesPreset = true;
+                } else if (currentPreset === '418' && uic.includes('418')) {
+                    matchesPreset = true;
+                }
+
+                if (!matchesPreset) return; // Ha nem egyezik a preset gombbal, kihagyjuk
+
+                // 2. SZÖVEGES KERESŐ ELLENŐRZÉSE
+                if (searchText !== '') {
+                    const matchesSearch = uic.toLowerCase().includes(searchText) || 
+                                          trainNumber.toString().toLowerCase().includes(searchText);
+                    if (!matchesSearch) return; // Ha nem egyezik a beírt szöveggel, kihagyjuk
+                }
+
+                // Ha átment a szűrőkön, hozzáadjuk a térképhez
+                const lat = loco.lat || loco.Lat || loco.latitude || loco.Latitude;
+                const lon = loco.lon || loco.lng || loco.Lon || loco.Lng || loco.longitude || loco.Longitude;
+                const from = loco.from || loco.From || loco.origin || '-';
+                const to = loco.to || loco.To || loco.destination || '-';
+                const delayMin = loco.delayMin || loco.delay || 0;
+                const delayText = delayMin > 0 ? `<span class="delay-warning">+${delayMin} perc</span>` : '0 perc';
+                const heading = loco.heading !== undefined ? loco.heading : (loco.Heading !== undefined ? loco.Heading : loco.direction);
+
+                if (lat && lon) {
+                    const tooltipContent = `
+                        <div>
+                            <b>UIC:</b> ${uic}<br>
+                            <b>Vonat:</b> ${trainNumber}<br>
+                            <b>Útvonal:</b> ${from} &#10141; ${to}<br>
+                            <b>Késés:</b> ${delayText}
+                        </div>
+                    `;
+
+                    const marker = L.marker([lat, lon], {
+                        icon: createDirectionalIcon(heading, uic)
+                    });
+
+                    marker.bindTooltip(tooltipContent, {
+                        className: 'train-tooltip',
+                        direction: 'top',
+                        offset: [0, -10],
+                        opacity: 1
+                    });
+
+                    marker.addTo(markerGroup);
+                }
+            });
+        }
+
+        // Csak letölti és elmenti az adatokat
         async function fetchLocomotiveData() {
             try {
                 const urlWithTimestamp = `${DATA_URL}?t=${new Date().getTime()}`;
@@ -224,8 +362,6 @@
                 
                 if (!response.ok) throw new Error('Hálózati hiba a lekéréskor');
                 const data = await response.json();
-                
-                markerGroup.clearLayers();
 
                 let locomotives = [];
                 if (Array.isArray(data)) {
@@ -240,44 +376,11 @@
                     }
                 }
 
-                locomotives.forEach(loco => {
-                    const lat = loco.lat || loco.Lat || loco.latitude || loco.Latitude;
-                    const lon = loco.lon || loco.lng || loco.Lon || loco.Lng || loco.longitude || loco.Longitude;
-                    
-                    const uic = loco.uic || loco.UIC || 'Ismeretlen';
-                    const trainNumber = loco.trainNumber || loco.TrainNumber || loco.flight || 'Ismeretlen';
-                    const from = loco.from || loco.From || loco.origin || '-';
-                    const to = loco.to || loco.To || loco.destination || '-';
-                    
-                    const delayMin = loco.delayMin || loco.delay || 0;
-                    const delayText = delayMin > 0 ? `<span class="delay-warning">+${delayMin} perc</span>` : '0 perc';
-
-                    const heading = loco.heading !== undefined ? loco.heading : (loco.Heading !== undefined ? loco.Heading : loco.direction);
-
-                    if (lat && lon) {
-                        const tooltipContent = `
-                            <div>
-                                <b>UIC:</b> ${uic}<br>
-                                <b>Vonat:</b> ${trainNumber}<br>
-                                <b>Útvonal:</b> ${from} &#10141; ${to}<br>
-                                <b>Késés:</b> ${delayText}
-                            </div>
-                        `;
-
-                        const marker = L.marker([lat, lon], {
-                            icon: createDirectionalIcon(heading, uic)
-                        });
-
-                        marker.bindTooltip(tooltipContent, {
-                            className: 'train-tooltip',
-                            direction: 'top',
-                            offset: [0, -10],
-                            opacity: 1
-                        });
-
-                        marker.addTo(markerGroup);
-                    }
-                });
+                // Adatok elmentése a memóriába
+                allLocomotives = locomotives;
+                
+                // Kirajzolás indítása
+                renderLocomotives();
 
             } catch (error) {
                 console.error('Hiba történt az adatok frissítésekor:', error);
@@ -286,15 +389,14 @@
 
         function updateTimer() {
             timeLeft--;
-            
             if (timeLeft <= 0) {
                 timeLeft = UPDATE_INTERVAL;
                 fetchLocomotiveData();
             }
-            
             timerBtn.textContent = timeLeft;
         }
 
+        // Indítás
         fetchLocomotiveData();
         setInterval(updateTimer, 1000);
 
