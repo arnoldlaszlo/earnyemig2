@@ -62,7 +62,7 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
             flex-direction: column;
             gap: 10px;
-            width: 280px;
+            width: 320px;
         }
 
         #filter-panel.show {
@@ -162,11 +162,12 @@
         
         <div id="filter-panel">
             <div class="preset-buttons">
-                <button class="control-btn preset-btn active-filter" onclick="setPreset('all', this)">Összes</button>
-                <button class="control-btn preset-btn" onclick="setPreset('630', this)">630</button>
-                <button class="control-btn preset-btn" onclick="setPreset('430', this)">430 (430/431/433)</button>
-                <button class="control-btn preset-btn" onclick="setPreset('628', this)">628</button>
-                <button class="control-btn preset-btn" onclick="setPreset('418', this)">418</button>
+                <button id="btn-all" class="control-btn preset-btn active-filter" onclick="togglePreset('all', this)">Összes</button>
+                <button class="control-btn preset-btn" onclick="togglePreset('630', this)">630</button>
+                <button class="control-btn preset-btn" onclick="togglePreset('431', this)">431</button>
+                <button class="control-btn preset-btn" onclick="togglePreset('43X', this)">43X</button>
+                <button class="control-btn preset-btn" onclick="togglePreset('628', this)">628</button>
+                <button class="control-btn preset-btn" onclick="togglePreset('418', this)">418</button>
             </div>
             <input type="text" id="search-input" class="search-input" placeholder="Keresés (UIC, vonatszám...)" onkeyup="renderLocomotives()">
         </div>
@@ -183,7 +184,6 @@
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Zoom control kikapcsolása inicializáláskor (hogy áthelyezhessük)
         const map = L.map('map', { zoomControl: false }).setView([47.1625, 19.5033], 7);
 
         const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -204,10 +204,7 @@
         const baseMaps = { "Sötét Térkép (OSM)": osmLayer, "Sötét Topo Térkép": topoLayer };
         const overlayMaps = { "Vasúthálózat (ORM)": ormLayer };
 
-        // 1. Rétegválasztó hozzáadása jobb alulra
         L.control.layers(baseMaps, overlayMaps, {position: 'bottomright'}).addTo(map);
-        
-        // 2. Zoom gombok hozzáadása jobb alulra (így a rétegek gomb fölé fog kerülni a Leaflet logikája szerint)
         L.control.zoom({ position: 'bottomright' }).addTo(map);
 
         let markerGroup = L.layerGroup().addTo(map);
@@ -216,9 +213,10 @@
         const UPDATE_INTERVAL = 30;
         let timeLeft = UPDATE_INTERVAL;
         
-        // Globális változók a szűréshez és a nyers adatokhoz
         let allLocomotives = []; 
-        let currentPreset = 'all';
+        
+        // Itt tároljuk, hogy mely szűrők vannak épp bekapcsolva
+        let activePresets = new Set(['all']);
 
         const timerBtn = document.getElementById('timer-btn');
         const uicToggle = document.getElementById('uic-toggle');
@@ -231,14 +229,43 @@
             filterPanel.classList.toggle('show');
         }
 
-        function setPreset(preset, btnElement) {
-            currentPreset = preset;
-            
-            // Gombok stílusának frissítése
-            document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active-filter'));
-            btnElement.classList.add('active-filter');
-            
-            // Azonnali újrarajzolás a meglévő adatokkal
+        // Új, kombinált szűrő logika
+        function togglePreset(preset, btnElement) {
+            if (preset === 'all') {
+                // Ha az összesre kattint, minden mást törlünk
+                activePresets.clear();
+                activePresets.add('all');
+                document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active-filter'));
+                btnElement.classList.add('active-filter');
+                
+                // Keresőmező tartalmának törlése
+                searchInput.value = '';
+            } else {
+                // Ha az "Összes" aktív volt, levesszük
+                if (activePresets.has('all')) {
+                    activePresets.delete('all');
+                    document.getElementById('btn-all').classList.remove('active-filter');
+                }
+
+                // Ha már be volt kapcsolva a gomb, kikapcsoljuk
+                if (activePresets.has(preset)) {
+                    activePresets.delete(preset);
+                    btnElement.classList.remove('active-filter');
+                } else {
+                    // Ha nem volt bekapcsolva, bekapcsoljuk
+                    activePresets.add(preset);
+                    btnElement.classList.add('active-filter');
+                }
+
+                // Ha minden szűrőt kikapcsoltunk, térjen vissza az "Összes" nézetre
+                if (activePresets.size === 0) {
+                    activePresets.add('all');
+                    document.getElementById('btn-all').classList.add('active-filter');
+                    searchInput.value = ''; // Biztos ami biztos, itt is törölhetjük
+                }
+            }
+
+            // Újrarajzolás a módosított szűrőkkel
             renderLocomotives();
         }
 
@@ -281,7 +308,6 @@
 
         // --- ADATFELDOLGOZÁS ÉS MEGJELENÍTÉS ---
         
-        // Csak kirajzolja a memóriában lévő vonatokat a szűrők alapján
         function renderLocomotives() {
             markerGroup.clearLayers();
             
@@ -291,35 +317,33 @@
                 const uic = loco.uic || loco.UIC || 'Ismeretlen';
                 const trainNumber = loco.trainNumber || loco.TrainNumber || loco.flight || 'Ismeretlen';
 
-                // Alap 8055-ös szűrés (ahogy eredetileg is volt)
                 const is8055 = uic.replace(/\s+/g, '').includes('8055');
                 const hasTrainNumber = trainNumber !== 'Ismeretlen' && trainNumber.toString().trim() !== '';
                 if (is8055 && !hasTrainNumber) return; 
 
-                // 1. ELŐRE DEFINIÁLT SZŰRŐ (PRESET) ELLENŐRZÉSE
+                // 1. TÖBBSZÖRÖS SZŰRŐ (PRESET) ELLENŐRZÉSE
                 let matchesPreset = false;
-                if (currentPreset === 'all') {
+                
+                if (activePresets.has('all')) {
                     matchesPreset = true;
-                } else if (currentPreset === '630' && uic.includes('630')) {
-                    matchesPreset = true;
-                } else if (currentPreset === '430' && (uic.includes('430') || uic.includes('431') || uic.includes('433'))) {
-                    matchesPreset = true;
-                } else if (currentPreset === '628' && uic.includes('628')) {
-                    matchesPreset = true;
-                } else if (currentPreset === '418' && uic.includes('418')) {
-                    matchesPreset = true;
+                } else {
+                    // "VAGY" kapcsolat: Ha bármelyik bekapcsolt gombnak megfelel, megmutatjuk
+                    if (activePresets.has('630') && uic.includes('630')) matchesPreset = true;
+                    if (activePresets.has('431') && uic.includes('431')) matchesPreset = true;
+                    if (activePresets.has('43X') && (uic.includes('430') || uic.includes('432') || uic.includes('433'))) matchesPreset = true;
+                    if (activePresets.has('628') && uic.includes('628')) matchesPreset = true;
+                    if (activePresets.has('418') && uic.includes('418')) matchesPreset = true;
                 }
 
-                if (!matchesPreset) return; // Ha nem egyezik a preset gombbal, kihagyjuk
+                if (!matchesPreset) return; // Ha egyik bekapcsolt szűrőre sem illik, kihagyjuk
 
-                // 2. SZÖVEGES KERESŐ ELLENŐRZÉSE
+                // 2. SZÖVEGES KERESŐ ELLENŐRZÉSE (ÉS kapcsolat a gombokkal)
                 if (searchText !== '') {
                     const matchesSearch = uic.toLowerCase().includes(searchText) || 
                                           trainNumber.toString().toLowerCase().includes(searchText);
-                    if (!matchesSearch) return; // Ha nem egyezik a beírt szöveggel, kihagyjuk
+                    if (!matchesSearch) return; 
                 }
 
-                // Ha átment a szűrőkön, hozzáadjuk a térképhez
                 const lat = loco.lat || loco.Lat || loco.latitude || loco.Latitude;
                 const lon = loco.lon || loco.lng || loco.Lon || loco.Lng || loco.longitude || loco.Longitude;
                 const from = loco.from || loco.From || loco.origin || '-';
@@ -354,7 +378,6 @@
             });
         }
 
-        // Csak letölti és elmenti az adatokat
         async function fetchLocomotiveData() {
             try {
                 const urlWithTimestamp = `${DATA_URL}?t=${new Date().getTime()}`;
@@ -376,10 +399,7 @@
                     }
                 }
 
-                // Adatok elmentése a memóriába
                 allLocomotives = locomotives;
-                
-                // Kirajzolás indítása
                 renderLocomotives();
 
             } catch (error) {
@@ -396,7 +416,6 @@
             timerBtn.textContent = timeLeft;
         }
 
-        // Indítás
         fetchLocomotiveData();
         setInterval(updateTimer, 1000);
 
