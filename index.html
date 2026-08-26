@@ -27,7 +27,7 @@
             filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
         }
         
-        /* Jobb felső vezérlő (Eredeti) */
+        /* Jobb felső vezérlő */
         #top-controls {
             position: absolute;
             top: 15px;
@@ -62,7 +62,7 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
             flex-direction: column;
             gap: 10px;
-            width: 320px;
+            width: 340px; 
         }
 
         #filter-panel.show {
@@ -168,8 +168,10 @@
                 <button class="control-btn preset-btn" onclick="togglePreset('43X', this)">43X</button>
                 <button class="control-btn preset-btn" onclick="togglePreset('628', this)">628</button>
                 <button class="control-btn preset-btn" onclick="togglePreset('418', this)">418</button>
+                <button class="control-btn preset-btn" onclick="togglePreset('VSz', this)" title="Csak vonatszámmal rendelkezők">VSz</button>
+                <button class="control-btn preset-btn" onclick="togglePreset('NVSz', this)" title="Vonatszám nélküliek">NVSz</button>
             </div>
-            <input type="text" id="search-input" class="search-input" placeholder="Keresés (UIC, vonatszám...)" onkeyup="renderLocomotives()">
+            <input type="text" id="search-input" class="search-input" placeholder="Keresés (Pl.: 117, 415...)" onkeyup="renderLocomotives()">
         </div>
     </div>
 
@@ -207,6 +209,23 @@
         L.control.layers(baseMaps, overlayMaps, {position: 'bottomright'}).addTo(map);
         L.control.zoom({ position: 'bottomright' }).addTo(map);
 
+        // --- MAGYARORSZÁG HATÁRVONALÁNAK BETÖLTÉSE ---
+        fetch('https://nominatim.openstreetmap.org/search?country=Hungary&polygon_geojson=1&format=geojson')
+            .then(response => response.json())
+            .then(data => {
+                L.geoJSON(data, {
+                    style: {
+                        color: "#ffffff", // Fehér határvonal
+                        weight: 3,        // Vonalvastagság
+                        opacity: 0.6,     // Átlátszóság
+                        fill: false       // Ne legyen kitöltése, csak vonal
+                    },
+                    interactive: false    // Ne zavarjon az egeres kattintásoknál
+                }).addTo(map);
+            })
+            .catch(err => console.error("Hiba a határvonal betöltésekor:", err));
+        // ---------------------------------------------
+
         let markerGroup = L.layerGroup().addTo(map);
 
         const DATA_URL = 'https://cdn.holavonat.is/emig_data_v1.json';
@@ -214,8 +233,6 @@
         let timeLeft = UPDATE_INTERVAL;
         
         let allLocomotives = []; 
-        
-        // Itt tároljuk, hogy mely szűrők vannak épp bekapcsolva
         let activePresets = new Set(['all']);
 
         const timerBtn = document.getElementById('timer-btn');
@@ -229,43 +246,33 @@
             filterPanel.classList.toggle('show');
         }
 
-        // Új, kombinált szűrő logika
         function togglePreset(preset, btnElement) {
             if (preset === 'all') {
-                // Ha az összesre kattint, minden mást törlünk
                 activePresets.clear();
                 activePresets.add('all');
                 document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active-filter'));
                 btnElement.classList.add('active-filter');
-                
-                // Keresőmező tartalmának törlése
                 searchInput.value = '';
             } else {
-                // Ha az "Összes" aktív volt, levesszük
                 if (activePresets.has('all')) {
                     activePresets.delete('all');
                     document.getElementById('btn-all').classList.remove('active-filter');
                 }
 
-                // Ha már be volt kapcsolva a gomb, kikapcsoljuk
                 if (activePresets.has(preset)) {
                     activePresets.delete(preset);
                     btnElement.classList.remove('active-filter');
                 } else {
-                    // Ha nem volt bekapcsolva, bekapcsoljuk
                     activePresets.add(preset);
                     btnElement.classList.add('active-filter');
                 }
 
-                // Ha minden szűrőt kikapcsoltunk, térjen vissza az "Összes" nézetre
                 if (activePresets.size === 0) {
                     activePresets.add('all');
                     document.getElementById('btn-all').classList.add('active-filter');
-                    searchInput.value = ''; // Biztos ami biztos, itt is törölhetjük
+                    searchInput.value = ''; 
                 }
             }
-
-            // Újrarajzolás a módosított szűrőkkel
             renderLocomotives();
         }
 
@@ -311,15 +318,13 @@
         function renderLocomotives() {
             markerGroup.clearLayers();
             
-            const searchText = searchInput.value.toLowerCase().trim();
+            const rawSearchText = searchInput.value.toLowerCase();
+            const searchTerms = rawSearchText.split(',').map(term => term.trim()).filter(term => term !== '');
 
             allLocomotives.forEach(loco => {
                 const uic = loco.uic || loco.UIC || 'Ismeretlen';
                 const trainNumber = loco.trainNumber || loco.TrainNumber || loco.flight || 'Ismeretlen';
-
-                const is8055 = uic.replace(/\s+/g, '').includes('8055');
                 const hasTrainNumber = trainNumber !== 'Ismeretlen' && trainNumber.toString().trim() !== '';
-                if (is8055 && !hasTrainNumber) return; 
 
                 // 1. TÖBBSZÖRÖS SZŰRŐ (PRESET) ELLENŐRZÉSE
                 let matchesPreset = false;
@@ -327,20 +332,26 @@
                 if (activePresets.has('all')) {
                     matchesPreset = true;
                 } else {
-                    // "VAGY" kapcsolat: Ha bármelyik bekapcsolt gombnak megfelel, megmutatjuk
                     if (activePresets.has('630') && uic.includes('630')) matchesPreset = true;
                     if (activePresets.has('431') && uic.includes('431')) matchesPreset = true;
                     if (activePresets.has('43X') && (uic.includes('430') || uic.includes('432') || uic.includes('433'))) matchesPreset = true;
                     if (activePresets.has('628') && uic.includes('628')) matchesPreset = true;
                     if (activePresets.has('418') && uic.includes('418')) matchesPreset = true;
+                    if (activePresets.has('VSz') && hasTrainNumber) matchesPreset = true;
+                    if (activePresets.has('NVSz') && !hasTrainNumber) matchesPreset = true;
                 }
 
-                if (!matchesPreset) return; // Ha egyik bekapcsolt szűrőre sem illik, kihagyjuk
+                if (!matchesPreset) return;
 
-                // 2. SZÖVEGES KERESŐ ELLENŐRZÉSE (ÉS kapcsolat a gombokkal)
-                if (searchText !== '') {
-                    const matchesSearch = uic.toLowerCase().includes(searchText) || 
-                                          trainNumber.toString().toLowerCase().includes(searchText);
+                // 2. SZÖVEGES KERESŐ ELLENŐRZÉSE
+                if (searchTerms.length > 0) {
+                    let matchesSearch = false;
+                    for (const term of searchTerms) {
+                        if (uic.toLowerCase().includes(term) || trainNumber.toString().toLowerCase().includes(term)) {
+                            matchesSearch = true;
+                            break; 
+                        }
+                    }
                     if (!matchesSearch) return; 
                 }
 
