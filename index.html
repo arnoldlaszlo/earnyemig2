@@ -193,36 +193,37 @@
         .show-uic .uic-bubble { display: block; }
         .show-train .train-bubble { display: block; }
 
-        /* --- MOBIL NÉZET: GOMBOK MÉRETÉNEK CSÖKKENTÉSE 15%-KAL --- */
+        /* --- MOBIL NÉZET: GOMBOK MÉRETÉNEK TOVÁBBI CSÖKKENTÉSE --- */
         @media (max-width: 768px) {
             .control-btn {
-                padding: 6px 10px; 
-                font-size: 14px;   
+                padding: 4px 8px; /* Még kisebb padding */
+                font-size: 12px;  /* 14px-ről 12px-re */
             }
 
             .filter-top-row #btn-all {
-                padding: 5px 0;
-                font-size: 11px;   
+                padding: 4px 0;
+                font-size: 10px;  /* 11px-ről 10px-re */
             }
 
             .search-input {
-                padding: 6px;      
-                font-size: 12px;   
+                padding: 5px;      
+                font-size: 11px;  /* 12px-ről 11px-re */
             }
 
             .preset-btn {
-                padding: 5px 0;    
-                font-size: 11px;   
+                padding: 4px 0;    
+                font-size: 10px;  /* 11px-ről 10px-re */
             }
 
             #timer-btn {
-                min-width: 34px;   
+                min-width: 30px;   
             }
 
             #uic-toggle {
-                min-width: 42px;   
+                min-width: 36px;   
             }
         }
+
     </style>
 </head>
 <body>
@@ -279,20 +280,15 @@
         }
         setInitialMapBounds(); 
 
-        // --- ÚJ: PANELS BEZÁRÁSA TÉRKÉPRE KATTINTÁSKOR ---
         const filterPanel = document.getElementById('filter-panel');
         
-        // Kattintás a térképen eltünteti a panelt (a beállított szűrők megmaradnak)
         map.on('click', function() {
             filterPanel.classList.remove('show');
         });
 
-        // Megakadályozzuk, hogy a panelekre (pl. gombokra vagy a keresőmezőre) 
-        // kattintás "átüssön" a térképre, és ezáltal bezárja a panelt.
         L.DomEvent.disableClickPropagation(document.getElementById('filter-container'));
         L.DomEvent.disableClickPropagation(document.getElementById('top-controls'));
         L.DomEvent.disableClickPropagation(document.getElementById('bottom-left-controls'));
-        // --------------------------------------------------
 
         const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
@@ -358,14 +354,26 @@
             renderLocomotives(); 
         }
 
-        function getMavColor(delay) {
+        // --- ÚJ: SZÜRE VONATOK (Nincs vonatszám vagy tehervonat) ---
+        function getMavColor(delay, trainNumber) {
             if (!useMavColors) return "#ffffff"; 
             
+            const hasTrainNumber = trainNumber !== 'Ismeretlen' && trainNumber.toString().trim() !== '';
+            const trainNumInt = parseInt(trainNumber, 10);
+            const isFreightTrain = !isNaN(trainNumInt) && trainNumInt >= 40000;
+
+            // Ha nincs vonatszám, VAGY tehervonat (>= 40000)
+            if (!hasTrainNumber || isFreightTrain) {
+                return "#888888"; // Szürke
+            }
+
+            // Normál személyvonatok késés alapján
             if (delay < 5) return "#4caf50";       
             else if (delay < 15) return "#ffeb3b"; 
             else if (delay < 60) return "#ff9800"; 
             else return "#f44336";                 
         }
+        // ------------------------------------------------------------
 
         function toggleFilterPanel() {
             filterPanel.classList.toggle('show');
@@ -429,7 +437,9 @@
         function createDirectionalIcon(heading, uic, delay, trainNumber) {
             const hasHeading = heading !== null && heading !== undefined;
             const rotation = hasHeading ? heading : 0; 
-            const fillColor = getMavColor(delay);
+            
+            // A szín kiválasztásához most már átadjuk a vonatszámot is!
+            const fillColor = getMavColor(delay, trainNumber);
 
             const arrowElement = hasHeading ? `
                 <g transform="rotate(${rotation} 12 12)">
