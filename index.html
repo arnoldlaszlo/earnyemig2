@@ -145,6 +145,22 @@
             box-sizing: border-box;
         }
 
+        /* --- ÚJ: PIROS KERET AKTÍV SZŰRŐ ESETÉN --- */
+        .has-active-filter {
+            border-color: #ff5555 !important;
+            color: #ff5555 !important;
+            box-shadow: 0 0 8px rgba(255, 85, 85, 0.4);
+        }
+
+        /* --- ÚJ: FRISSÍTÉS VILLANÁS ANIMÁCIÓ --- */
+        @keyframes refreshFlash {
+            0% { background-color: #ff5555; color: #ffffff; }
+            100% { background-color: #2a2a2a; color: #ff5555; }
+        }
+        .flash-animation {
+            animation: refreshFlash 1s ease-out;
+        }
+
         /* Gomb specifikus stílusok */
         #timer-btn { color: #ff5555; min-width: 40px; }
         #uic-toggle { min-width: 50px; }
@@ -283,6 +299,7 @@
         setInitialMapBounds(); 
 
         const filterPanel = document.getElementById('filter-panel');
+        const filterToggleBtn = document.getElementById('filter-toggle');
         
         map.on('click', function() {
             filterPanel.classList.remove('show');
@@ -494,6 +511,14 @@
             const rawSearchText = searchInput.value.toLowerCase();
             const searchTerms = rawSearchText.split(',').map(term => term.trim()).filter(term => term !== '');
 
+            // --- AKTÍV SZŰRŐ JELZÉSE A FŐ GOMBON ---
+            const isFilterActive = !activePresets.has('all') || rawSearchText.trim() !== '';
+            if (isFilterActive) {
+                filterToggleBtn.classList.add('has-active-filter');
+            } else {
+                filterToggleBtn.classList.remove('has-active-filter');
+            }
+
             allLocomotives.forEach(loco => {
                 const uic = loco.uic || loco.UIC || 'Ismeretlen';
                 const trainNumber = loco.trainNumber || loco.TrainNumber || loco.flight || 'Ismeretlen';
@@ -568,6 +593,11 @@
 
         async function fetchLocomotiveData() {
             try {
+                // --- FRISSÍTÉS GOMB VILLANTÁSA ---
+                timerBtn.classList.remove('flash-animation');
+                void timerBtn.offsetWidth; // DOM újrarajzolás kikényszerítése, hogy újra lefusson az animáció
+                timerBtn.classList.add('flash-animation');
+
                 const urlWithTimestamp = `${DATA_URL}?t=${new Date().getTime()}`;
                 const response = await fetch(urlWithTimestamp);
                 
