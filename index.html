@@ -193,6 +193,38 @@
         .show-uic .uic-bubble { display: block; }
         .show-train .train-bubble { display: block; }
 
+        /* --- MOBIL NÉZET: GOMBOK MÉRETÉNEK CSÖKKENTÉSE 15%-KAL --- */
+        @media (max-width: 768px) {
+            .control-btn {
+                padding: 6px 10px; /* 8px 12px helyett */
+                font-size: 14px;   /* 16px helyett */
+            }
+
+            .filter-top-row #btn-all {
+                padding: 5px 0;
+                font-size: 11px;   /* 12px helyett */
+            }
+
+            .search-input {
+                padding: 6px;      /* 8px helyett */
+                font-size: 12px;   /* 14px helyett */
+            }
+
+            .preset-btn {
+                padding: 5px 0;    /* 6px 0 helyett */
+                font-size: 11px;   /* 12px helyett */
+            }
+
+            #timer-btn {
+                min-width: 34px;   /* 40px helyett */
+            }
+
+            #uic-toggle {
+                min-width: 42px;   /* 50px helyett */
+            }
+        }
+        /* -------------------------------------------------------- */
+
     </style>
 </head>
 <body>
