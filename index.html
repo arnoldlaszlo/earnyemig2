@@ -1,5 +1,699 @@
-<!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mozdonykereső - Holavonat.is (EMIG) - Dark Mode + Napsütés</title>
     
-    <!-- SunCalc JS -->
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- SunCalc JS beállítása a csillagászati számításokhoz -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
+    
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+        }
+        
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        .leaflet-tile-pane {
+            filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+        }
+        
+        /* Jobb felső vezérlő */
+        #top-controls {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background-color: rgba(30, 30, 30, 0.95);
+            padding: 5px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            z-index: 1000;
+            display: flex;
+            gap: 5px;
+            border: 1px solid #444;
+        }
+
+        /* BAL FELSŐ SZŰRŐ FELÜLET */
+        #filter-container {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        /* BAL ALSÓ GOMB KONTÉNERE */
+        #bottom-left-controls {
+            position: absolute;
+            bottom: 25px;
+            left: 15px;
+            z-index: 1000;
+            display: flex;
+            gap: 5px;
+        }
+
+        #filter-panel {
+            display: none;
+            background-color: rgba(30, 30, 30, 0.95);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            flex-direction: column;
+            gap: 8px;
+            width: 320px; 
+            max-width: calc(100vw - 30px);
+            box-sizing: border-box;
+        }
+
+        #filter-panel.show {
+            display: flex;
+        }
+
+        .filter-top-row {
+            display: flex;
+            gap: 5px;
+            width: 100%;
+        }
+
+        .filter-top-row #btn-all {
+            flex: 0 0 calc(25% - 3.75px);
+            padding: 6px 0; 
+            font-size: 12px;
+        }
+
+        .search-input {
+            background: #222;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 8px;
+            border-radius: 4px;
+            flex: 1; 
+            box-sizing: border-box;
+            font-size: 14px;
+            min-width: 0;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: #66b3ff;
+        }
+
+        .preset-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            width: 100%;
+        }
+
+        .control-btn {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+        }
+
+        .control-btn:hover { background: #3a3a3a; }
+        .control-btn.active-filter { background: #66b3ff; color: #111; border-color: #5599dd; }
+
+        .preset-btn {
+            padding: 6px 0; 
+            font-size: 12px; 
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .has-active-filter {
+            border-color: #ff5555 !important;
+            color: #ff5555 !important;
+            box-shadow: 0 0 8px rgba(255, 85, 85, 0.4);
+        }
+
+        @keyframes refreshFlash {
+            0% { background-color: #ff5555; color: #ffffff; }
+            100% { background-color: #2a2a2a; color: #ff5555; }
+        }
+        .flash-animation {
+            animation: refreshFlash 1s ease-out;
+        }
+
+        #timer-btn { color: #ff5555; min-width: 40px; }
+        #uic-toggle { min-width: 50px; }
+        #uic-toggle.active { background-color: #66b3ff; color: #111; border-color: #5599dd; }
+        .color-active { background-color: #4caf50 !important; color: white !important; border-color: #388e3c !important;}
+
+        .leaflet-tooltip.train-tooltip {
+            background: rgba(30, 30, 30, 0.95);
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 8px;
+            font-size: 14px;
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+        }
+        .leaflet-tooltip-top.train-tooltip::before { border-top-color: rgba(30, 30, 30, 0.95); }
+        .train-tooltip b { color: #66b3ff; }
+        .delay-warning { color: #ff5555; font-weight: bold; }
+
+        .custom-div-icon { overflow: visible !important; }
+        
+        .info-bubble {
+            display: none;
+            position: absolute;
+            left: 22px;
+            background: #222222;
+            border: 2px solid #ffffff;
+            color: #ffffff;
+            padding: 3px 6px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 10;
+            line-height: 1.3;
+            text-align: center;
+        }
+
+        .uic-bubble { top: -10px; }
+        .train-bubble { top: -18px; } 
+        .show-uic .uic-bubble { display: block; }
+        .show-train .train-bubble { display: block; }
+
+        /* ÚJ: Napsütés overlay konténer (mindig középen van, az egéreseményeket átengedi) */
+        #sun-overlay {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 360px;
+            height: 360px;
+            z-index: 999;
+            pointer-events: none; /* Átengedi a kattintást a térképre! */
+        }
+
+        /* SVG elemek árnyékolása a jobb láthatóságért */
+        .sun-text {
+            text-shadow: 1px 1px 3px #000, -1px -1px 3px #000, 1px -1px 3px #000, -1px 1px 3px #000;
+            font-family: monospace;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .control-btn { padding: 4px 8px; font-size: 12px; }
+            .filter-top-row #btn-all { padding: 4px 0; font-size: 10px; }
+            .search-input { padding: 5px; font-size: 11px; }
+            .preset-btn { padding: 4px 0; font-size: 10px; }
+            #timer-btn { min-width: 30px; }
+            #uic-toggle { min-width: 36px; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="filter-container">
+        <div id="filter-toggle" class="control-btn" style="width: max-content;" onclick="toggleFilterPanel()">
+            🔍 Szűrők
+        </div>
+        
+        <div id="filter-panel">
+            <div class="filter-top-row">
+                <button id="btn-all" class="control-btn preset-btn active-filter" onclick="togglePreset('all', this)">Összes</button>
+                <input type="text" id="search-input" class="search-input" placeholder="Keresés (Pl.: 117, 415...)" onkeyup="renderLocomotives()">
+            </div>
+            
+            <div class="preset-buttons">
+                <button class="control-btn preset-btn" onclick="togglePreset('VSz', this)" title="Csak vonatszámmal rendelkezők">VSz</button>
+                <button class="control-btn preset-btn" onclick="togglePreset('NVSz', this)" title="Vonatszám nélküliek">NVSz</button>
+                <button class="control-btn preset-btn" onclick="togglePreset('630', this)">630</button>
+                <button class="control-btn preset-btn" onclick="togglePreset('431', this)">431</button>
+                <button class="control-btn preset-btn" onclick="togglePreset('628', this)">628</button>
+                <button class="control-btn preset-btn" onclick="togglePreset('418', this)">418</button>
+                <button class="control-btn preset-btn" onclick="togglePreset('43X', this)">43X</button>
+                <button class="control-btn preset-btn" onclick="togglePreset('T', this)" title="40000 és e feletti vonatszámok">T</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="top-controls">
+        <div id="uic-toggle" class="control-btn" onclick="toggleUIC()" title="Feliratok léptetése">UIC</div>
+        <div id="timer-btn" class="control-btn" onclick="manualRefresh()" title="Azonnali frissítés">30</div>
+    </div>
+
+    <div id="bottom-left-controls">
+        <div id="color-toggle" class="control-btn" onclick="toggleColors()" title="Váltás a késés alapú színezésre">🎨 Színezés</div>
+    </div>
+
+    <!-- Térkép és Napsütés overlay -->
+    <div id="map"></div>
+    <div id="sun-overlay"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map', { zoomControl: false });
+
+        function setInitialMapBounds() {
+            if (window.innerWidth <= 768) {
+                map.setView([46.37, 18.14], 8);
+            } else {
+                map.setView([47.16, 19.50], 8); 
+            }
+        }
+        setInitialMapBounds(); 
+
+        const filterPanel = document.getElementById('filter-panel');
+        const filterToggleBtn = document.getElementById('filter-toggle');
+        
+        map.on('click', function() {
+            filterPanel.classList.remove('show');
+        });
+
+        L.DomEvent.disableClickPropagation(document.getElementById('filter-container'));
+        L.DomEvent.disableClickPropagation(document.getElementById('top-controls'));
+        L.DomEvent.disableClickPropagation(document.getElementById('bottom-left-controls'));
+
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap'
+        }).addTo(map);
+
+        const topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            maxZoom: 17,
+            attribution: '&copy; OpenStreetMap | &copy; OpenTopoMap'
+        });
+
+        const ormLayer = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenRailwayMap'
+        }).addTo(map);
+
+        // --- ÚJ: Üres rétegcsoport a Napsütés menüponthoz ---
+        const sunDummyLayer = L.layerGroup(); 
+
+        const baseMaps = { "Sötét Térkép (OSM)": osmLayer, "Sötét Topo Térkép": topoLayer };
+        const overlayMaps = { 
+            "Vasúthálózat (ORM)": ormLayer,
+            "Napsütés": sunDummyLayer // Hozzáadva a rétegekhez
+        };
+
+        L.control.layers(baseMaps, overlayMaps, {position: 'bottomright'}).addTo(map);
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        fetch('https://nominatim.openstreetmap.org/search?country=Hungary&polygon_geojson=1&format=geojson')
+            .then(response => response.json())
+            .then(data => {
+                L.geoJSON(data, {
+                    style: { color: "#ffffff", weight: 3, opacity: 0.6, fill: false },
+                    interactive: false    
+                }).addTo(map);
+            }).catch(err => console.error(err));
+
+        let markerGroup = L.layerGroup().addTo(map);
+        const DATA_URL = 'https://cdn.holavonat.is/emig_data_v1.json';
+        const UPDATE_INTERVAL = 30;
+        let timeLeft = UPDATE_INTERVAL;
+        let allLocomotives = []; 
+        let activePresets = new Set(['all']);
+        let useMavColors = false; 
+        let labelDisplayState = 0; 
+        const timerBtn = document.getElementById('timer-btn');
+        const uicToggle = document.getElementById('uic-toggle');
+        const mapEl = document.getElementById('map');
+        const searchInput = document.getElementById('search-input');
+        const colorToggleBtn = document.getElementById('color-toggle');
+        const sunOverlay = document.getElementById('sun-overlay');
+
+        // ==========================================
+        // NAPSÜTÉS VIZUALIZÁCIÓ LOGIKÁJA
+        // ==========================================
+        
+        // Szög átváltás (SunCalc Azimuth -> Térkép fokok: Észak=0, Kelet=90...)
+        function getMapAzimuth(suncalcAzimuth) {
+            return suncalcAzimuth + Math.PI; 
+        }
+
+        // Sugárirányú pont számítása SVG-ben
+        function polarToCartesian(cx, cy, r, angleInRadians) {
+            return {
+                x: cx + (r * Math.sin(angleInRadians)),
+                y: cy - (r * Math.cos(angleInRadians))
+            };
+        }
+
+        function formatTime(date) {
+            return String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0');
+        }
+
+        function updateSunVisuals() {
+            if (sunOverlay.style.display === 'none') return;
+
+            const center = map.getCenter();
+            const now = new Date();
+            const times = SunCalc.getTimes(now, center.lat, center.lng);
+
+            // Alap adatok SVG-hez
+            const cx = 180, cy = 180; // 360x360 viewBox közepe
+            const rBase = 120; // Alap kör sugara
+
+            // Irányok bekérése radiánban
+            const posNow = SunCalc.getPosition(now, center.lat, center.lng);
+            const posSunrise = SunCalc.getPosition(times.sunrise, center.lat, center.lng);
+            const posSunset = SunCalc.getPosition(times.sunset, center.lat, center.lng);
+
+            const azNow = getMapAzimuth(posNow.azimuth);
+            const azSunrise = getMapAzimuth(posSunrise.azimuth);
+            const azSunset = getMapAzimuth(posSunset.azimuth);
+
+            // Nappali nap-ív pontjainak generálása (Minden 15 percben egy pont a szebb görbéért)
+            let arcPoints = [];
+            let startTs = times.sunrise.getTime();
+            let endTs = times.sunset.getTime();
+
+            for(let t = startTs; t <= endTs; t += 15 * 60000) {
+                let pos = SunCalc.getPosition(new Date(t), center.lat, center.lng);
+                let az = getMapAzimuth(pos.azimuth);
+                let pt = polarToCartesian(cx, cy, rBase, az);
+                arcPoints.push(`${pt.x},${pt.y}`);
+            }
+
+            // Óránkénti osztások (Tick-ek)
+            let hourlyTicksSvg = '';
+            let startHour = new Date(startTs);
+            startHour.setMinutes(0, 0, 0);
+            startHour.setHours(startHour.getHours() + 1);
+
+            for (let t = startHour.getTime(); t < endTs; t += 3600000) {
+                let dateT = new Date(t);
+                let pos = SunCalc.getPosition(dateT, center.lat, center.lng);
+                let az = getMapAzimuth(pos.azimuth);
+                
+                let p1 = polarToCartesian(cx, cy, rBase - 5, az);
+                let p2 = polarToCartesian(cx, cy, rBase + 5, az);
+                let textP = polarToCartesian(cx, cy, rBase + 16, az);
+                
+                hourlyTicksSvg += `
+                    <line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="#ffd700" stroke-width="2" />
+                    <text x="${textP.x}" y="${textP.y}" fill="#ffd700" font-size="12" class="sun-text" text-anchor="middle" dominant-baseline="middle">${dateT.getHours()}</text>
+                `;
+            }
+
+            // Koordináták a fő vonalakhoz
+            const ptSunrise = polarToCartesian(cx, cy, rBase, azSunrise);
+            const ptSunset = polarToCartesian(cx, cy, rBase, azSunset);
+            const ptNow = polarToCartesian(cx, cy, rBase, azNow);
+            
+            // Text elhelyezés korrekciója, hogy ne lógjon bele a vonalba
+            const textSunrise = polarToCartesian(cx, cy, rBase + 35, azSunrise);
+            const textSunset = polarToCartesian(cx, cy, rBase + 35, azSunset);
+            const textNow = polarToCartesian(cx, cy, rBase + 35, azNow);
+
+            // SVG Összeállítása
+            let svg = `
+            <svg width="360" height="360" viewBox="0 0 360 360" xmlns="http://www.w3.org/2000/svg">
+                <!-- Halvány háttérkör (Iránytű alap) -->
+                <circle cx="${cx}" cy="${cy}" r="${rBase}" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" stroke-dasharray="5,5" />
+                
+                <!-- Nappali nap-ív (Sárga vonal) -->
+                <polyline points="${arcPoints.join(' ')}" fill="none" stroke="rgba(255, 215, 0, 0.4)" stroke-width="6" />
+                
+                <!-- Napkelte és Napnyugta vonalak -->
+                <line x1="${cx}" y1="${cy}" x2="${ptSunrise.x}" y2="${ptSunrise.y}" stroke="#ff9800" stroke-width="2" stroke-dasharray="4,4" />
+                <line x1="${cx}" y1="${cy}" x2="${ptSunset.x}" y2="${ptSunset.y}" stroke="#f44336" stroke-width="2" stroke-dasharray="4,4" />
+                
+                <!-- Napkelte / Napnyugta szövegek -->
+                <text x="${textSunrise.x}" y="${textSunrise.y}" fill="#ff9800" font-size="12" class="sun-text" text-anchor="middle">Kelte: ${formatTime(times.sunrise)}</text>
+                <text x="${textSunset.x}" y="${textSunset.y}" fill="#f44336" font-size="12" class="sun-text" text-anchor="middle">Nyugta: ${formatTime(times.sunset)}</text>
+
+                <!-- Óra osztások -->
+                ${hourlyTicksSvg}
+
+                <!-- Jelenlegi napállás vonal és nap ikon -->
+                <line x1="${cx}" y1="${cy}" x2="${ptNow.x}" y2="${ptNow.y}" stroke="#ffeb3b" stroke-width="2" />
+                <circle cx="${ptNow.x}" cy="${ptNow.y}" r="6" fill="#ffeb3b" stroke="#000" stroke-width="1" />
+                <text x="${textNow.x}" y="${textNow.y}" fill="#ffeb3b" font-size="14" class="sun-text" text-anchor="middle">Nap: ${formatTime(now)}</text>
+                
+                <!-- Középpont jelölő (A térkép közepe) -->
+                <circle cx="${cx}" cy="${cy}" r="4" fill="#ffffff" />
+            </svg>
+            `;
+
+            sunOverlay.innerHTML = svg;
+        }
+
+        // Térkép események kezelése a Napsütéshez
+        map.on('move', updateSunVisuals); // Folyamatosan frissül húzás közben
+        
+        map.on('overlayadd', function(e) {
+            if (e.name === "Napsütés") {
+                sunOverlay.style.display = 'block';
+                updateSunVisuals();
+            }
+        });
+
+        map.on('overlayremove', function(e) {
+            if (e.name === "Napsütés") {
+                sunOverlay.style.display = 'none';
+            }
+        });
+
+        // Az idő múlása miatt percenként frissítjük a napállást, ha be van kapcsolva
+        setInterval(updateSunVisuals, 60000);
+
+        // ==========================================
+        // EREDETI FUNKCIÓK
+        // ==========================================
+
+        function toggleColors() {
+            useMavColors = !useMavColors;
+            if (useMavColors) colorToggleBtn.classList.add('color-active');
+            else colorToggleBtn.classList.remove('color-active');
+            renderLocomotives(); 
+        }
+
+        function getMavColor(delay, trainNumber) {
+            if (!useMavColors) return "#ffffff"; 
+            const hasTrainNumber = trainNumber !== 'Ismeretlen' && trainNumber.toString().trim() !== '';
+            const trainNumInt = parseInt(trainNumber, 10);
+            const isFreightTrain = !isNaN(trainNumInt) && trainNumInt >= 40000;
+
+            if (!hasTrainNumber || isFreightTrain) return "#888888"; 
+            if (delay < 5) return "#4caf50";       
+            else if (delay < 15) return "#ffeb3b"; 
+            else if (delay < 60) return "#ff9800"; 
+            else return "#f44336";                 
+        }
+
+        function toggleFilterPanel() { filterPanel.classList.toggle('show'); }
+
+        function togglePreset(preset, btnElement) {
+            if (preset === 'all') {
+                activePresets.clear();
+                activePresets.add('all');
+                document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active-filter'));
+                btnElement.classList.add('active-filter');
+                searchInput.value = '';
+            } else {
+                if (activePresets.has('all')) {
+                    activePresets.delete('all');
+                    document.getElementById('btn-all').classList.remove('active-filter');
+                }
+                if (activePresets.has(preset)) {
+                    activePresets.delete(preset);
+                    btnElement.classList.remove('active-filter');
+                } else {
+                    activePresets.add(preset);
+                    btnElement.classList.add('active-filter');
+                }
+                if (activePresets.size === 0) {
+                    activePresets.add('all');
+                    document.getElementById('btn-all').classList.add('active-filter');
+                    searchInput.value = ''; 
+                }
+            }
+            renderLocomotives();
+        }
+
+        function toggleUIC() {
+            labelDisplayState = (labelDisplayState + 1) % 3;
+            mapEl.classList.remove('show-uic', 'show-train');
+            if (labelDisplayState === 1) {
+                mapEl.classList.add('show-uic');
+                uicToggle.classList.add('active');
+                uicToggle.textContent = 'UIC';
+            } else if (labelDisplayState === 2) {
+                mapEl.classList.add('show-train');
+                uicToggle.classList.add('active');
+                uicToggle.textContent = 'VSz';
+            } else {
+                uicToggle.classList.remove('active');
+                uicToggle.textContent = 'UIC';
+            }
+        }
+
+        function manualRefresh() {
+            timeLeft = UPDATE_INTERVAL;
+            timerBtn.textContent = timeLeft;
+            fetchLocomotiveData();
+        }
+
+        function createDirectionalIcon(heading, uic, delay, trainNumber) {
+            const hasHeading = heading !== null && heading !== undefined;
+            const rotation = hasHeading ? heading : 0; 
+            const fillColor = getMavColor(delay, trainNumber);
+            const arrowElement = hasHeading ? `
+                <g transform="rotate(${rotation} 12 12)">
+                    <path d="M12 4 L17 11 L13 11 L13 18 L11 18 L11 11 L7 11 Z" fill="#222222"/>
+                </g>` : '';
+
+            let shortUic = uic || "???";
+            const cleanedUic = shortUic.replace(/\D/g, ''); 
+            if (cleanedUic.length === 12) {
+                if (cleanedUic.charAt(4) === '8') shortUic = cleanedUic.substring(4, 8) + ' ' + cleanedUic.substring(8, 11);
+                else shortUic = cleanedUic.substring(5, 8) + ' ' + cleanedUic.substring(8, 11);
+            } else if (cleanedUic.length >= 7 && cleanedUic.charAt(0) === '8') {
+                shortUic = cleanedUic.substring(0, 4) + ' ' + cleanedUic.substring(4, 7);
+            } else if (cleanedUic.length >= 6) {
+                shortUic = cleanedUic.substring(0, 3) + ' ' + cleanedUic.substring(3, 6);
+            }
+
+            const hasTrainNumber = trainNumber !== 'Ismeretlen' && trainNumber.toString().trim() !== '';
+            const shortTrainNumber = hasTrainNumber ? trainNumber : '-';
+            const delayFormatted = delay > 0 ? `+${delay}` : `+0`;
+            const trainInfoText = `${shortTrainNumber}, ${delayFormatted}`;
+
+            const iconHtml = `
+                <div style="position: relative; width: 24px; height: 24px;">
+                    <svg width="24" height="24" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10" fill="${fillColor}" stroke="#222222" stroke-width="2"/>
+                        ${arrowElement}
+                    </svg>
+                    <div class="info-bubble uic-bubble">${shortUic}</div>
+                    <div class="info-bubble train-bubble">${shortUic}<br>${trainInfoText}</div>
+                </div>`;
+
+            return L.divIcon({ className: 'custom-div-icon', html: iconHtml, iconSize: [24, 24], iconAnchor: [12, 12] });
+        }
+
+        function renderLocomotives() {
+            markerGroup.clearLayers();
+            const rawSearchText = searchInput.value.toLowerCase();
+            const searchTerms = rawSearchText.split(',').map(term => term.trim()).filter(term => term !== '');
+            const isFilterActive = !activePresets.has('all') || rawSearchText.trim() !== '';
+            if (isFilterActive) filterToggleBtn.classList.add('has-active-filter');
+            else filterToggleBtn.classList.remove('has-active-filter');
+
+            allLocomotives.forEach(loco => {
+                const uic = loco.uic || loco.UIC || 'Ismeretlen';
+                const trainNumber = loco.trainNumber || loco.TrainNumber || loco.flight || 'Ismeretlen';
+                const hasTrainNumber = trainNumber !== 'Ismeretlen' && trainNumber.toString().trim() !== '';
+                const trainNumInt = parseInt(trainNumber, 10);
+                const isT = !isNaN(trainNumInt) && trainNumInt >= 40000;
+                let matchesPreset = false;
+                
+                if (activePresets.has('all')) matchesPreset = true;
+                else {
+                    if (activePresets.has('630') && uic.includes('630')) matchesPreset = true;
+                    if (activePresets.has('431') && uic.includes('431')) matchesPreset = true;
+                    if (activePresets.has('43X') && (uic.includes('430') || uic.includes('432') || uic.includes('433'))) matchesPreset = true;
+                    if (activePresets.has('628') && uic.includes('628')) matchesPreset = true;
+                    if (activePresets.has('418') && uic.includes('418')) matchesPreset = true;
+                    if (activePresets.has('VSz') && hasTrainNumber) matchesPreset = true;
+                    if (activePresets.has('NVSz') && !hasTrainNumber) matchesPreset = true;
+                    if (activePresets.has('T') && isT) matchesPreset = true;
+                }
+                if (!matchesPreset) return;
+
+                if (searchTerms.length > 0) {
+                    let matchesSearch = false;
+                    for (const term of searchTerms) {
+                        if (uic.toLowerCase().includes(term) || trainNumber.toString().toLowerCase().includes(term)) {
+                            matchesSearch = true; break; 
+                        }
+                    }
+                    if (!matchesSearch) return; 
+                }
+
+                const lat = loco.lat || loco.Lat || loco.latitude || loco.Latitude;
+                const lon = loco.lon || loco.lng || loco.Lon || loco.Lng || loco.longitude || loco.Longitude;
+                const from = loco.from || loco.From || loco.origin || '-';
+                const to = loco.to || loco.To || loco.destination || '-';
+                const delayMin = parseInt(loco.delayMin || loco.delay || 0, 10);
+                const delayText = delayMin > 0 ? `<span class="delay-warning">+${delayMin} perc</span>` : '0 perc';
+                const heading = loco.heading !== undefined ? loco.heading : (loco.Heading !== undefined ? loco.Heading : loco.direction);
+
+                if (lat && lon) {
+                    const tooltipContent = `
+                        <div>
+                            <b>UIC:</b> ${uic}<br>
+                            <b>Vonat:</b> ${trainNumber}<br>
+                            <b>Útvonal:</b> ${from} &#10141; ${to}<br>
+                            <b>Késés:</b> ${delayText}
+                        </div>`;
+                    const marker = L.marker([lat, lon], { icon: createDirectionalIcon(heading, uic, delayMin, trainNumber) });
+                    marker.bindTooltip(tooltipContent, { className: 'train-tooltip', direction: 'top', offset: [0, -10], opacity: 1 });
+                    marker.addTo(markerGroup);
+                }
+            });
+        }
+
+        async function fetchLocomotiveData() {
+            try {
+                timerBtn.classList.remove('flash-animation');
+                void timerBtn.offsetWidth; 
+                timerBtn.classList.add('flash-animation');
+
+                const response = await fetch(`${DATA_URL}?t=${new Date().getTime()}`);
+                if (!response.ok) throw new Error('Hálózati hiba a lekéréskor');
+                const data = await response.json();
+
+                let locomotives = [];
+                if (Array.isArray(data)) locomotives = data;
+                else if (typeof data === 'object') {
+                    locomotives = Object.values(data);
+                    for (let key in data) {
+                        if (Array.isArray(data[key])) { locomotives = data[key]; break; }
+                    }
+                }
+                allLocomotives = locomotives;
+                renderLocomotives();
+            } catch (error) { console.error('Hiba történt az adatok frissítésekor:', error); }
+        }
+
+        function updateTimer() {
+            timeLeft--;
+            if (timeLeft <= 0) { timeLeft = UPDATE_INTERVAL; fetchLocomotiveData(); }
+            timerBtn.textContent = timeLeft;
+        }
+
+        fetchLocomotiveData();
+        setInterval(updateTimer, 1000);
+
+    </script>
+</body>
+</html>
