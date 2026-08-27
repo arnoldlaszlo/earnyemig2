@@ -23,7 +23,7 @@
             overflow: hidden;
         }
 
-        /* --- ÚJ: FELSŐ ÓRA SÁV --- */
+        /* --- FELSŐ ÓRA SÁV --- */
         #clock-bar {
             flex: 0 0 25px;
             width: 100%;
@@ -38,7 +38,7 @@
             z-index: 2000;
         }
 
-        /* --- FŐ TARTALOM KONTÉNER (Térkép + Vezérlők) --- */
+        /* --- FŐ TARTALOM KONTÉNER --- */
         #app-content {
             flex: 1;
             position: relative;
@@ -162,14 +162,14 @@
         .show-uic .uic-bubble { display: block; }
         .show-train .train-bubble { display: block; }
 
-        /* --- MÓDOSÍTOTT: Napsütés overlay méretezés --- */
+        /* --- Napsütés overlay méretezés --- */
         #sun-overlay {
             display: none;
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 540px;  /* ASZTALI NÉZET: 150%-os méret az eredeti 360-hoz képest */
+            width: 540px;  /* ASZTALI NÉZET: 150%-os méret */
             height: 540px; 
             z-index: 999;
             pointer-events: none;
@@ -192,7 +192,7 @@
             .preset-btn { padding: 4px 0; font-size: 10px; }
             #timer-btn { min-width: 30px; }
             #uic-toggle { min-width: 36px; }
-            #clock-bar { font-size: 12px; } /* Kisebb betű mobilon az óránál */
+            #clock-bar { font-size: 12px; }
         }
 
     </style>
@@ -275,7 +275,8 @@
             const min = String(now.getMinutes()).padStart(2, '0');
             const ss = String(now.getSeconds()).padStart(2, '0');
             
-            document.getElementById('clock-bar').innerText = `${yyyy}:${mm}:${dd} ${dayStr} ${hh}:${min}:${ss}`;
+            // DÁTUM FORMÁTUM MÓDOSÍTVA (pontokkal elválasztva)
+            document.getElementById('clock-bar').innerText = `${yyyy}.${mm}.${dd}. ${dayStr} ${hh}:${min}:${ss}`;
         }
 
         // Szinkronizálás indítása, majd az óra léptetése másodpercenként
@@ -395,11 +396,12 @@
                 let p2 = polarToCartesian(cx, cy, rBase + 5, az);
                 let textP = polarToCartesian(cx, cy, rBase + 16, az);
                 
+                // MÓDOSÍTOTT VONAL VASTAGSÁG ÉS KONTARASZT
                 hourlyTicksSvg += `
-                    <!-- Vékony vonal befelé -->
-                    <line x1="${pInner.x}" y1="${pInner.y}" x2="${p1.x}" y2="${p1.y}" stroke="#ffd700" stroke-width="0.6" stroke-dasharray="2,3" opacity="0.5" />
+                    <!-- Erősebb vonal befelé -->
+                    <line x1="${pInner.x}" y1="${pInner.y}" x2="${p1.x}" y2="${p1.y}" stroke="#ffd700" stroke-width="1.5" stroke-dasharray="4,4" opacity="0.8" />
                     <!-- Vastag óra osztás az íven -->
-                    <line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="#ffd700" stroke-width="2" />
+                    <line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="#ffd700" stroke-width="3" />
                     <text x="${textP.x}" y="${textP.y}" fill="#ffd700" font-size="12" class="sun-text" text-anchor="middle" dominant-baseline="middle">${dateT.getHours()}</text>
                 `;
             }
@@ -411,7 +413,7 @@
             const textSunrise = polarToCartesian(cx, cy, rBase + 35, azSunrise);
             const textSunset = polarToCartesian(cx, cy, rBase + 35, azSunset);
 
-            // Módosított SVG összeállítása (Levett feliratokkal)
+            // SVG összeállítása
             let svg = `
             <svg width="100%" height="100%" viewBox="0 0 360 360" xmlns="http://www.w3.org/2000/svg">
                 <!-- Halvány háttérkör -->
@@ -431,7 +433,7 @@
                 <!-- Óra osztások + vékony bevezető vonalak -->
                 ${hourlyTicksSvg}
 
-                <!-- Jelenlegi napállás vonal és nap ikon (Szöveg nélkül) -->
+                <!-- Jelenlegi napállás vonal és nap ikon -->
                 <line x1="${cx}" y1="${cy}" x2="${ptNow.x}" y2="${ptNow.y}" stroke="#ffeb3b" stroke-width="2" />
                 <circle cx="${ptNow.x}" cy="${ptNow.y}" r="6" fill="#ffeb3b" stroke="#000" stroke-width="1" />
                 
