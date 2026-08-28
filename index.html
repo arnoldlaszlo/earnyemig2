@@ -52,7 +52,7 @@
             height: 100%;
         }
         
-        /* --- ALSÓ STÁTUSZ SÁV --- */
+        /* --- ALSÓ STÁTUSZ SÁV (EGYETLEN SOR) --- */
         #status-bar {
             flex: 0 0 25px;
             width: 100%;
@@ -60,11 +60,11 @@
             color: #ffffff;
             font-family: monospace;
             font-size: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 0 15px;
+            line-height: 25px;
+            text-align: center;
+            white-space: nowrap; /* Szigorúan egysoros megjelenítés */
+            overflow: hidden;
+            text-overflow: ellipsis; /* Ha nem férne ki, pontpontponttal zárja le */
             box-sizing: border-box;
             border-top: 1px solid #333;
             z-index: 2000;
@@ -73,10 +73,6 @@
 
         #status-bar.alert-red {
             background-color: #b30000;
-        }
-
-        .v-separator {
-            color: #777;
         }
 
         #map {
@@ -265,7 +261,7 @@
             #timer-btn { min-width: 30px; }
             #uic-toggle { min-width: 36px; }
             #clock-bar { font-size: 12px; }
-            #status-bar { font-size: 10px; }
+            #status-bar { font-size: 11px; } /* Kisebb méret mobilra a garantált egy sor miatt */
         }
 
     </style>
@@ -315,12 +311,7 @@
     </div>
 
     <!-- Alsó státuszsáv (Adatforrás infók) -->
-    <div id="status-bar">
-        <span>Adatforrás dátuma:</span>
-        <span id="db-time">Keresés...</span>
-        <span class="v-separator">|</span>
-        <span id="db-elapsed">00:00</span>
-    </div>
+    <div id="status-bar">Adatforrás dátuma: Keresés... | 00:00</div>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -370,21 +361,21 @@
                 const parts = new Intl.DateTimeFormat('hu-HU', options).formatToParts(new Date(lastDbUpdateTime));
                 let v = {}; parts.forEach(p => v[p.type] = p.value);
                 
-                document.getElementById('db-time').innerText = `${v.year}.${v.month}.${v.day}. ${v.hour}:${v.minute}:${v.second}`;
-
                 const elapsedMs = nowMs - lastDbUpdateTime;
                 const elapsedSecTotal = Math.floor(elapsedMs / 1000);
                 
+                let timeStr = "00:00";
                 if (elapsedSecTotal >= 0) {
                     const e_min = String(Math.floor(elapsedSecTotal / 60)).padStart(2, '0');
                     const e_sec = String(elapsedSecTotal % 60).padStart(2, '0');
-                    document.getElementById('db-elapsed').innerText = `${e_min}:${e_sec}`;
-                } else {
-                    document.getElementById('db-elapsed').innerText = `00:00`;
+                    timeStr = `${e_min}:${e_sec}`;
                 }
 
-                // Piros háttér figyelmeztetés a teljes alsó sávra alkalmazva
+                // Egyetlen folytonos szöveg beállítása a státuszsávba
                 const statusBar = document.getElementById('status-bar');
+                statusBar.innerText = `Adatforrás dátuma: ${v.year}.${v.month}.${v.day}. ${v.hour}:${v.minute}:${v.second} | ${timeStr}`;
+
+                // Piros háttér figyelmeztetés a teljes alsó sávra alkalmazva
                 if (elapsedMs > 5 * 60 * 1000) { 
                     statusBar.classList.add('alert-red');
                 } else {
