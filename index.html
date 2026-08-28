@@ -52,7 +52,7 @@
             height: 100%;
         }
         
-        /* --- ALSÓ STÁTUSZ SÁV (ÚJ 2-OSZLOPOS ELRENDEZÉS) --- */
+        /* --- ALSÓ STÁTUSZ SÁV --- */
         #status-bar {
             flex: none;
             min-height: 38px;
@@ -78,7 +78,7 @@
         .status-col {
             display: flex;
             flex-direction: column;
-            align-items: center; /* Középre igazítás oszlopon belül */
+            align-items: center; 
             justify-content: center;
             line-height: 1.3;
         }
@@ -103,6 +103,41 @@
             filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
         }
         
+        /* --- LEAFLET VEZÉRLŐK SÖTÉT MÓD FELÜLÍRÁSA --- */
+        .leaflet-bar {
+            border: 1px solid #444 !important;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5) !important;
+            border-radius: 8px !important;
+            overflow: hidden; 
+        }
+        .leaflet-bar a {
+            background-color: rgba(30, 30, 30, 0.95) !important;
+            color: #ffffff !important;
+            border-bottom: 1px solid #444 !important;
+        }
+        .leaflet-bar a:hover {
+            background-color: #3a3a3a !important;
+            color: #66b3ff !important;
+        }
+        .leaflet-bar a:last-child {
+            border-bottom: none !important;
+        }
+
+        .leaflet-control-layers {
+            border: 1px solid #444 !important;
+            background-color: rgba(30, 30, 30, 0.95) !important;
+            color: #ffffff !important;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5) !important;
+            border-radius: 8px !important;
+        }
+        .leaflet-control-layers-expanded {
+            padding: 8px 10px !important;
+        }
+        /* Ikon színének és hátterének inverziója sötét módhoz */
+        .leaflet-control-layers-toggle {
+            filter: invert(1) brightness(2);
+        }
+
         #top-controls {
             position: absolute;
             top: 15px;
@@ -241,7 +276,7 @@
             #timer-btn { min-width: 30px; }
             #uic-toggle { min-width: 36px; }
             #clock-bar { font-size: 12px; }
-            #status-bar { font-size: 10px; padding: 4px 5px; } /* Kisebb betű és padding mobilra, hogy kiférjen */
+            #status-bar { font-size: 10px; padding: 4px 5px; }
             #status-left { gap: 8px; }
             #db-elapsed { font-size: 12px; }
         }
