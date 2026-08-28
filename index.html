@@ -52,8 +52,9 @@
             height: 100%;
         }
         
-        /* --- ALSÓ STÁTUSZ SÁV (EGYETLEN SOR) --- */
+        /* --- ALSÓ STÁTUSZ SÁV (EGYETLEN RÖVID SOR + TOOLTIP) --- */
         #status-bar {
+            position: relative;
             flex: 0 0 25px;
             width: 100%;
             background-color: #1a1a1a;
@@ -62,17 +63,54 @@
             font-size: 12px;
             line-height: 25px;
             text-align: center;
-            white-space: nowrap; /* Szigorúan egysoros megjelenítés */
-            overflow: hidden;
-            text-overflow: ellipsis; /* Ha nem férne ki, pontpontponttal zárja le */
             box-sizing: border-box;
             border-top: 1px solid #333;
             z-index: 2000;
             transition: background-color 0.3s;
+            cursor: pointer; /* Jelzi, hogy interaktív */
+        }
+
+        #status-text {
+            white-space: nowrap;
         }
 
         #status-bar.alert-red {
             background-color: #b30000;
+        }
+
+        /* Felugró ablakocska (Tooltip) */
+        #status-tooltip {
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            bottom: 32px; /* A státuszsáv fölé pozicionálva */
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(30, 30, 30, 0.95);
+            color: #ffffff;
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid #555;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            text-align: center;
+            z-index: 2005;
+            transition: opacity 0.2s, visibility 0.2s;
+            line-height: 1.6;
+            font-size: 12px;
+            width: max-content;
+            max-width: 90vw; /* Ne lógjon ki a képernyőről */
+            pointer-events: none; /* Ne zavarja a kattintásokat */
+        }
+
+        #status-tooltip > div {
+            white-space: nowrap;
+        }
+
+        /* Megjelenítés Hover (PC) vagy aktív class (Mobil tap) esetén */
+        #status-bar:hover #status-tooltip,
+        #status-bar.show-tooltip #status-tooltip {
+            visibility: visible;
+            opacity: 1;
         }
 
         #map {
@@ -261,7 +299,11 @@
             #timer-btn { min-width: 30px; }
             #uic-toggle { min-width: 36px; }
             #clock-bar { font-size: 12px; }
-            #status-bar { font-size: 11px; } /* Kisebb méret mobilra a garantált egy sor miatt */
+            #status-bar { font-size: 11px; } 
+            
+            #status-tooltip > div {
+                white-space: normal; /* Mobilon engedjük, hogy nagyon szűk helyen törjön, ha muszáj */
+            }
         }
 
     </style>
@@ -310,8 +352,17 @@
         <div id="sun-overlay"></div>
     </div>
 
-    <!-- Alsó státuszsáv (Adatforrás infók) -->
-    <div id="status-bar">Adatforrás dátuma: Keresés... | 00:00</div>
+    <!-- Alsó státuszsáv (Koppintásra / Hoverre Tooltipet mutat) -->
+    <div id="status-bar" onclick="this.classList.toggle('show-tooltip')">
+        <span id="status-text">Keresés... | 00:00</span>
+        
+        <!-- Felugró információs ablak -->
+        <div id="status-tooltip">
+            <div id="tooltip-date">Adatforrás dátuma: Keresés...</div>
+            <div id="tooltip-elapsed">Eltérés az aktuális időhöz képest: 00:00</div>
+            <div style="margin-top: 4px; color: #aaa;">Az adatok forrása a holavonat.is</div>
+        </div>
+    </div>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -371,11 +422,16 @@
                     timeStr = `${e_min}:${e_sec}`;
                 }
 
-                // Egyetlen folytonos szöveg beállítása a státuszsávba
-                const statusBar = document.getElementById('status-bar');
-                statusBar.innerText = `Adatforrás dátuma: ${v.year}.${v.month}.${v.day}. ${v.hour}:${v.minute}:${v.second} | ${timeStr}`;
+                // Dátum string előkészítése
+                const dateStr = `${v.year}.${v.month}.${v.day}. ${v.hour}:${v.minute}:${v.second}`;
+
+                // Értékek beírása a sávba és a tooltipbe
+                document.getElementById('status-text').innerText = `${dateStr} | ${timeStr}`;
+                document.getElementById('tooltip-date').innerText = `Adatforrás dátuma: ${dateStr}`;
+                document.getElementById('tooltip-elapsed').innerText = `Eltérés az aktuális időhöz képest: ${timeStr}`;
 
                 // Piros háttér figyelmeztetés a teljes alsó sávra alkalmazva
+                const statusBar = document.getElementById('status-bar');
                 if (elapsedMs > 5 * 60 * 1000) { 
                     statusBar.classList.add('alert-red');
                 } else {
