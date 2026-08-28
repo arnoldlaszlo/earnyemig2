@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+html_content = """<!DOCTYPE html>
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
@@ -311,7 +311,7 @@
     </div>
 
     <!-- Alsó státuszsáv (Adatforrás infók) -->
-    <div id="status-bar">Adatforrás dátuma: Keresés... | 00:00</div>
+    <div id="status-bar">Keresés... | 00:00</div>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -373,7 +373,7 @@
 
                 // Egyetlen folytonos szöveg beállítása a státuszsávba
                 const statusBar = document.getElementById('status-bar');
-                statusBar.innerText = `Adatforrás dátuma: ${v.year}.${v.month}.${v.day}. ${v.hour}:${v.minute}:${v.second} | ${timeStr}`;
+                statusBar.innerText = `${v.year}.${v.month}.${v.day}. ${v.hour}:${v.minute}:${v.second} | ${timeStr}`;
 
                 // Piros háttér figyelmeztetés a teljes alsó sávra alkalmazva
                 if (elapsedMs > 5 * 60 * 1000) { 
@@ -719,3 +719,9 @@
     </script>
 </body>
 </html>
+"""
+
+with open("mozdonykereso_modified.html", "w", encoding="utf-8") as file:
+    file.write(html_content)
+
+print("File written successfully.")
