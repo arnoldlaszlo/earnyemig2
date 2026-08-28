@@ -353,7 +353,7 @@
     </div>
 
     <!-- Alsó státuszsáv (Koppintásra / Hoverre Tooltipet mutat) -->
-    <div id="status-bar" onclick="this.classList.toggle('show-tooltip')">
+    <div id="status-bar">
         <span id="status-text">Keresés... | 00:00</span>
         
         <!-- Felugró információs ablak -->
@@ -445,6 +445,24 @@
         updateClockBar();
 
         // ==========================================
+        // ESEMÉNYKEZELŐK A STÁTUSZSÁV TOOLTIPHEZ
+        // ==========================================
+        const statusBarEl = document.getElementById('status-bar');
+        
+        // Státuszsávra kattintáskor kinyílik a tooltip
+        statusBarEl.addEventListener('click', function(e) {
+            this.classList.toggle('show-tooltip');
+            e.stopPropagation(); // Megakadályozza, hogy a globális click rögtön bezárja
+        });
+
+        // Ha a dokumentum bármely MÁS pontjára kattintunk, zárja be a tooltipet
+        document.addEventListener('click', function(e) {
+            if (!statusBarEl.contains(e.target)) {
+                statusBarEl.classList.remove('show-tooltip');
+            }
+        });
+
+        // ==========================================
         // TÉRKÉP ALAP BEÁLLÍTÁSAI
         // ==========================================
         const map = L.map('map', { zoomControl: false });
@@ -456,9 +474,13 @@
         setInitialMapBounds(); 
 
         const filterPanel = document.getElementById('filter-panel');
-        const filterToggleBtn = document.getElementById('filter-toggle');
         
-        map.on('click', function() { filterPanel.classList.remove('show'); });
+        // Térkép kattintáskor a szűrőpanel is és a tooltip is eltűnik
+        map.on('click', function() { 
+            filterPanel.classList.remove('show'); 
+            statusBarEl.classList.remove('show-tooltip');
+        });
+        
         L.DomEvent.disableClickPropagation(document.getElementById('filter-container'));
         L.DomEvent.disableClickPropagation(document.getElementById('top-controls'));
         L.DomEvent.disableClickPropagation(document.getElementById('bottom-left-controls'));
