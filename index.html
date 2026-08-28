@@ -1,4 +1,4 @@
-html_content = """<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
@@ -88,8 +88,7 @@ html_content = """<!DOCTYPE html>
             transform: translateX(-50%);
             background-color: rgba(30, 30, 30, 0.95);
             color: #ffffff;
-            /* MÓDOSÍTVA: Kicsit nagyobb felső padding, hogy elférjen az X */
-            padding: 20px 15px 10px 15px; 
+            padding: 10px 15px;
             border-radius: 8px;
             border: 1px solid #555;
             box-shadow: 0 4px 15px rgba(0,0,0,0.6);
@@ -100,29 +99,11 @@ html_content = """<!DOCTYPE html>
             font-size: 12px;
             width: max-content;
             max-width: 90vw; /* Ne lógjon ki a képernyőről */
-            /* MÓDOSÍTVA: auto-ra állítva, hogy a gombra lehessen kattintani */
-            pointer-events: auto; 
+            pointer-events: none; /* Ne zavarja a kattintásokat */
         }
 
         #status-tooltip > div {
             white-space: nowrap;
-        }
-        
-        /* ÚJ: Az X gomb stílusa */
-        #close-tooltip {
-            position: absolute;
-            top: 2px;
-            right: 8px;
-            cursor: pointer;
-            font-size: 18px;
-            font-weight: bold;
-            color: #888;
-            line-height: 1;
-            padding: 2px;
-        }
-
-        #close-tooltip:hover {
-            color: #ffffff;
         }
 
         /* Megjelenítés Hover (PC) vagy aktív class (Mobil tap) esetén */
@@ -372,14 +353,11 @@ html_content = """<!DOCTYPE html>
     </div>
 
     <!-- Alsó státuszsáv (Koppintásra / Hoverre Tooltipet mutat) -->
-    <div id="status-bar" onclick="this.classList.toggle('show-tooltip')">
+    <div id="status-bar">
         <span id="status-text">Keresés... | 00:00</span>
         
         <!-- Felugró információs ablak -->
         <div id="status-tooltip">
-            <!-- ÚJ: Bezáró gomb -->
-            <div id="close-tooltip" onclick="closeTooltip(event)">&times;</div>
-            
             <div id="tooltip-date">Adatforrás dátuma: Keresés...</div>
             <div id="tooltip-elapsed">Eltérés az aktuális időhöz képest: 00:00</div>
             <div style="margin-top: 4px; color: #aaa;">Az adatok forrása a holavonat.is</div>
@@ -467,6 +445,24 @@ html_content = """<!DOCTYPE html>
         updateClockBar();
 
         // ==========================================
+        // ESEMÉNYKEZELŐK A STÁTUSZSÁV TOOLTIPHEZ
+        // ==========================================
+        const statusBarEl = document.getElementById('status-bar');
+        
+        // Státuszsávra kattintáskor kinyílik a tooltip
+        statusBarEl.addEventListener('click', function(e) {
+            this.classList.toggle('show-tooltip');
+            e.stopPropagation(); // Megakadályozza, hogy a globális click rögtön bezárja
+        });
+
+        // Ha a dokumentum bármely MÁS pontjára kattintunk, zárja be a tooltipet
+        document.addEventListener('click', function(e) {
+            if (!statusBarEl.contains(e.target)) {
+                statusBarEl.classList.remove('show-tooltip');
+            }
+        });
+
+        // ==========================================
         // TÉRKÉP ALAP BEÁLLÍTÁSAI
         // ==========================================
         const map = L.map('map', { zoomControl: false });
@@ -478,9 +474,13 @@ html_content = """<!DOCTYPE html>
         setInitialMapBounds(); 
 
         const filterPanel = document.getElementById('filter-panel');
-        const filterToggleBtn = document.getElementById('filter-toggle');
         
-        map.on('click', function() { filterPanel.classList.remove('show'); });
+        // Térkép kattintáskor a szűrőpanel is és a tooltip is eltűnik
+        map.on('click', function() { 
+            filterPanel.classList.remove('show'); 
+            statusBarEl.classList.remove('show-tooltip');
+        });
+        
         L.DomEvent.disableClickPropagation(document.getElementById('filter-container'));
         L.DomEvent.disableClickPropagation(document.getElementById('top-controls'));
         L.DomEvent.disableClickPropagation(document.getElementById('bottom-left-controls'));
@@ -790,24 +790,10 @@ html_content = """<!DOCTYPE html>
             if (timeLeft <= 0) { timeLeft = UPDATE_INTERVAL; fetchLocomotiveData(); }
             timerBtn.textContent = timeLeft;
         }
-        
-        // ==========================================
-        // ÚJ: Tooltip bezáró funkció
-        // ==========================================
-        function closeTooltip(event) {
-            // Megakadályozzuk, hogy a kattintás eljusson az alsó sáv (status-bar) onclick eseményéig
-            event.stopPropagation(); 
-            // Levesszük a megjelenítést szabályozó osztályt
-            document.getElementById('status-bar').classList.remove('show-tooltip');
-        }
 
         fetchLocomotiveData();
         setInterval(updateTimer, 1000);
 
     </script>
 </body>
-</html>"""
-
-with open("emig-ez_volt_a_legjobb_20260828_v2.html", "w", encoding="utf-8") as f:
-    f.write(html_content)
-print("File generated: emig-ez_volt_a_legjobb_20260828_v2.html")
+</html>
