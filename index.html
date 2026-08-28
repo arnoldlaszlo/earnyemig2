@@ -52,18 +52,19 @@
             height: 100%;
         }
         
-        /* --- ALSÓ STÁTUSZ SÁV --- */
+        /* --- ALSÓ STÁTUSZ SÁV (ÚJ 2-OSZLOPOS ELRENDEZÉS) --- */
         #status-bar {
-            flex: 0 0 25px;
+            flex: none;
+            min-height: 38px;
             width: 100%;
             background-color: #1a1a1a;
             color: #ffffff;
             font-family: monospace;
-            font-size: 14px;
+            font-size: 13px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 15px;
+            padding: 4px 15px;
             box-sizing: border-box;
             border-top: 1px solid #333;
             z-index: 2000;
@@ -74,14 +75,23 @@
             background-color: #b30000;
         }
 
-        #status-right {
+        .status-col {
             display: flex;
-            align-items: center;
+            flex-direction: column;
+            align-items: center; /* Középre igazítás oszlopon belül */
+            justify-content: center;
+            line-height: 1.3;
         }
 
-        .v-separator {
-            margin: 0 10px;
-            color: #777;
+        #status-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        #db-elapsed {
+            font-size: 16px;
+            font-weight: bold;
         }
 
         #map {
@@ -231,8 +241,9 @@
             #timer-btn { min-width: 30px; }
             #uic-toggle { min-width: 36px; }
             #clock-bar { font-size: 12px; }
-            #status-bar { font-size: 10px; padding: 0 5px; } /* Kisebb betű és padding mobilra, hogy kiférjen */
-            .v-separator { margin: 0 5px; }
+            #status-bar { font-size: 10px; padding: 4px 5px; } /* Kisebb betű és padding mobilra, hogy kiférjen */
+            #status-left { gap: 8px; }
+            #db-elapsed { font-size: 12px; }
         }
 
     </style>
@@ -284,12 +295,15 @@
     <!-- Alsó státuszsáv az adatbázis frissítési idejének és forrásának -->
     <div id="status-bar">
         <div id="status-left">
-            Az adatok forrása a holavonat.is
-        </div>
-        <div id="status-right">
-            <span id="db-time">Adatforrás dátuma: Keresés...</span>
-            <span class="v-separator">|</span>
+            <div class="status-col">
+                <span>Adatforrás dátuma:</span>
+                <span id="db-time">Keresés...</span>
+            </div>
             <span id="db-elapsed">00:00</span>
+        </div>
+        <div id="status-right" class="status-col">
+            <span>Az adatok forrása:</span>
+            <span>holavonat.is</span>
         </div>
     </div>
 
@@ -344,7 +358,7 @@
                 const parts = new Intl.DateTimeFormat('hu-HU', options).formatToParts(new Date(lastDbUpdateTime));
                 let v = {}; parts.forEach(p => v[p.type] = p.value);
                 
-                document.getElementById('db-time').innerText = `Adatforrás dátuma: ${v.year}.${v.month}.${v.day}. ${v.hour}:${v.minute}:${v.second}`;
+                document.getElementById('db-time').innerText = `${v.year}.${v.month}.${v.day}. ${v.hour}:${v.minute}:${v.second}`;
 
                 const elapsedMs = nowMs - lastDbUpdateTime;
                 const elapsedSecTotal = Math.floor(elapsedMs / 1000);
