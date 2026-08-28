@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+html_content = """<!DOCTYPE html>
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
@@ -88,7 +88,8 @@
             transform: translateX(-50%);
             background-color: rgba(30, 30, 30, 0.95);
             color: #ffffff;
-            padding: 10px 15px;
+            /* MÓDOSÍTVA: Kicsit nagyobb felső padding, hogy elférjen az X */
+            padding: 20px 15px 10px 15px; 
             border-radius: 8px;
             border: 1px solid #555;
             box-shadow: 0 4px 15px rgba(0,0,0,0.6);
@@ -99,11 +100,29 @@
             font-size: 12px;
             width: max-content;
             max-width: 90vw; /* Ne lógjon ki a képernyőről */
-            pointer-events: none; /* Ne zavarja a kattintásokat */
+            /* MÓDOSÍTVA: auto-ra állítva, hogy a gombra lehessen kattintani */
+            pointer-events: auto; 
         }
 
         #status-tooltip > div {
             white-space: nowrap;
+        }
+        
+        /* ÚJ: Az X gomb stílusa */
+        #close-tooltip {
+            position: absolute;
+            top: 2px;
+            right: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            color: #888;
+            line-height: 1;
+            padding: 2px;
+        }
+
+        #close-tooltip:hover {
+            color: #ffffff;
         }
 
         /* Megjelenítés Hover (PC) vagy aktív class (Mobil tap) esetén */
@@ -358,6 +377,9 @@
         
         <!-- Felugró információs ablak -->
         <div id="status-tooltip">
+            <!-- ÚJ: Bezáró gomb -->
+            <div id="close-tooltip" onclick="closeTooltip(event)">&times;</div>
+            
             <div id="tooltip-date">Adatforrás dátuma: Keresés...</div>
             <div id="tooltip-elapsed">Eltérés az aktuális időhöz képest: 00:00</div>
             <div style="margin-top: 4px; color: #aaa;">Az adatok forrása a holavonat.is</div>
@@ -768,10 +790,24 @@
             if (timeLeft <= 0) { timeLeft = UPDATE_INTERVAL; fetchLocomotiveData(); }
             timerBtn.textContent = timeLeft;
         }
+        
+        // ==========================================
+        // ÚJ: Tooltip bezáró funkció
+        // ==========================================
+        function closeTooltip(event) {
+            // Megakadályozzuk, hogy a kattintás eljusson az alsó sáv (status-bar) onclick eseményéig
+            event.stopPropagation(); 
+            // Levesszük a megjelenítést szabályozó osztályt
+            document.getElementById('status-bar').classList.remove('show-tooltip');
+        }
 
         fetchLocomotiveData();
         setInterval(updateTimer, 1000);
 
     </script>
 </body>
-</html>
+</html>"""
+
+with open("emig-ez_volt_a_legjobb_20260828_v2.html", "w", encoding="utf-8") as f:
+    f.write(html_content)
+print("File generated: emig-ez_volt_a_legjobb_20260828_v2.html")
