@@ -62,9 +62,9 @@
             font-size: 12px;
             line-height: 25px;
             text-align: center;
-            white-space: nowrap; /* Szigorúan egysoros megjelenítés */
+            white-space: nowrap;
             overflow: hidden;
-            text-overflow: ellipsis; /* Ha nem férne ki, pontpontponttal zárja le */
+            text-overflow: ellipsis;
             box-sizing: border-box;
             border-top: 1px solid #333;
             z-index: 2000;
@@ -80,7 +80,6 @@
             width: 100%;
         }
 
-        /* Térkép betöltés alatti sötét háttér beállítása */
         .leaflet-container {
             background-color: #121212 !important;
         }
@@ -89,7 +88,6 @@
             filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
         }
         
-        /* --- LEAFLET VEZÉRLŐK SÖTÉT MÓD FELÜLÍRÁSA --- */
         .leaflet-bar {
             border: 1px solid #444 !important;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5) !important;
@@ -230,14 +228,13 @@
         .show-uic .uic-bubble { display: block; }
         .show-train .train-bubble { display: block; }
 
-        /* --- Napsütés overlay méretezés --- */
         #sun-overlay {
             display: none;
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 540px;  /* ASZTALI NÉZET: 150%-os méret */
+            width: 540px;
             height: 540px; 
             z-index: 999;
             pointer-events: none;
@@ -250,10 +247,7 @@
         }
 
         @media (max-width: 768px) {
-            #sun-overlay {
-                width: 360px; /* MOBIL NÉZET: marad az eredeti képernyőt kitöltő méret */
-                height: 360px;
-            }
+            #sun-overlay { width: 360px; height: 360px; }
             .control-btn { padding: 4px 8px; font-size: 12px; }
             .filter-top-row #btn-all { padding: 4px 0; font-size: 10px; }
             .search-input { padding: 5px; font-size: 11px; }
@@ -261,17 +255,14 @@
             #timer-btn { min-width: 30px; }
             #uic-toggle { min-width: 36px; }
             #clock-bar { font-size: 12px; }
-            #status-bar { font-size: 11px; } /* Kisebb méret mobilra a garantált egy sor miatt */
+            #status-bar { font-size: 11px; }
         }
-
     </style>
 </head>
 <body>
 
-    <!-- Felső sáv -->
     <div id="clock-bar" onclick="hardRefresh()" title="Kattints a teljes oldal újratöltéséhez">Idő szinkronizálása...</div>
 
-    <!-- Csomagolt konténer az elemek pozicionálásához -->
     <div id="app-content">
         <div id="filter-container">
             <div id="filter-toggle" class="control-btn" style="width: max-content;" onclick="toggleFilterPanel()">
@@ -304,16 +295,15 @@
 
         <div id="bottom-left-controls">
             <div id="color-toggle" class="control-btn" onclick="toggleColors()" title="Váltás a késés alapú színezésre">🎨 Színezés</div>
+            <div id="wakelock-toggle" class="control-btn" onclick="toggleWakeLock()" title="Kijelző ébrentartása">💡 Ébrentartás</div>
         </div>
 
         <div id="map"></div>
         <div id="sun-overlay"></div>
     </div>
 
-    <!-- Alsó státuszsáv (Adatforrás infók) -->
     <div id="status-bar">Keresés... | 00:00</div>
 
-    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // ==========================================
@@ -371,11 +361,9 @@
                     timeStr = `${e_min}:${e_sec}`;
                 }
 
-                // Egyetlen folytonos szöveg beállítása a státuszsávba
                 const statusBar = document.getElementById('status-bar');
                 statusBar.innerText = `${v.year}.${v.month}.${v.day}. ${v.hour}:${v.minute}:${v.second} | ${timeStr}`;
 
-                // Piros háttér figyelmeztetés a teljes alsó sávra alkalmazva
                 if (elapsedMs > 5 * 60 * 1000) { 
                     statusBar.classList.add('alert-red');
                 } else {
@@ -517,7 +505,6 @@
                 <line x1="${cx}" y1="${cy}" x2="${ptSunrise.x}" y2="${ptSunrise.y}" stroke="#ff9800" stroke-width="2" stroke-dasharray="4,4" />
                 <line x1="${cx}" y1="${cy}" x2="${ptSunset.x}" y2="${ptSunset.y}" stroke="#f44336" stroke-width="2" stroke-dasharray="4,4" />
                 
-                <!-- Napkelte és napnyugta időpontjai befelé húzva -->
                 <text x="${textSunrise.x}" y="${textSunrise.y}" fill="#ff9800" font-size="12" class="sun-text" text-anchor="middle" dominant-baseline="middle">${formatTime(times.sunrise)}</text>
                 <text x="${textSunset.x}" y="${textSunset.y}" fill="#f44336" font-size="12" class="sun-text" text-anchor="middle" dominant-baseline="middle">${formatTime(times.sunset)}</text>
                 
@@ -534,6 +521,53 @@
         map.on('overlayadd', function(e) { if (e.name === "Napsütés") { sunOverlay.style.display = 'block'; updateSunVisuals(); } });
         map.on('overlayremove', function(e) { if (e.name === "Napsütés") { sunOverlay.style.display = 'none'; } });
         setInterval(updateSunVisuals, 60000);
+
+        // ==========================================
+        // KIJELZŐ ÉBRENTARTÁSA (WAKE LOCK API)
+        // ==========================================
+        let wakeLock = null;
+        const wakeLockBtn = document.getElementById('wakelock-toggle');
+
+        async function toggleWakeLock() {
+            if (!('wakeLock' in navigator)) {
+                alert('A böngésződ (vagy az iOS verziód) nem támogatja az ébrentartást. (iOS 16.4+ szükséges)');
+                return;
+            }
+
+            if (wakeLock !== null) {
+                wakeLock.release().then(() => {
+                    wakeLock = null;
+                    wakeLockBtn.classList.remove('color-active');
+                });
+            } else {
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    wakeLockBtn.classList.add('color-active');
+                    
+                    wakeLock.addEventListener('release', () => {
+                        wakeLock = null;
+                        if(wakeLockBtn) wakeLockBtn.classList.remove('color-active');
+                    });
+                } catch (err) {
+                    console.error('Wake Lock hiba:', err);
+                    alert('Nem sikerült bekapcsolni az ébrentartást.');
+                }
+            }
+        }
+
+        // Újraaktiválás lapváltás után, ha előtte be volt kapcsolva
+        document.addEventListener('visibilitychange', () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') {
+                navigator.wakeLock.request('screen').then(lock => {
+                    wakeLock = lock;
+                    wakeLockBtn.classList.add('color-active');
+                    wakeLock.addEventListener('release', () => {
+                        wakeLock = null;
+                        wakeLockBtn.classList.remove('color-active');
+                    });
+                }).catch(err => console.log('Ébrentartás visszaállítása sikertelen:', err));
+            }
+        });
 
         // ==========================================
         // EREDETI MOZDONY/TÉRKÉP FUNKCIÓK
