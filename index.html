@@ -23,56 +23,25 @@
             overflow: hidden;
         }
 
-        /* --- FELSŐ ÓRA ÉS STÁTUSZ SÁV --- */
+        /* --- FELSŐ ÓRA SÁV --- */
         #clock-bar {
-            flex: none;
-            min-height: 45px;
-            padding: 4px 0;
+            flex: 0 0 25px;
             width: 100%;
             background-color: #1a1a1a;
             color: #ffffff;
             font-family: monospace;
+            font-size: 14px;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
             border-bottom: 1px solid #333;
             z-index: 2000;
             cursor: pointer;
             transition: background-color 0.2s;
-            gap: 2px;
         }
         
         #clock-bar:hover, #clock-bar:active {
             background-color: #2a2a2a;
-        }
-
-        #clock-current {
-            font-size: 14px;
-            font-weight: bold;
-        }
-
-        #clock-db-status {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 12px;
-            padding: 2px 8px;
-            border-radius: 4px;
-            transition: background-color 0.3s;
-        }
-
-        #clock-db-status.alert-red {
-            background-color: #b30000;
-        }
-
-        .v-separator {
-            color: #777;
-        }
-
-        #db-elapsed {
-            font-size: 14px;
-            font-weight: bold;
         }
 
         /* --- FŐ TARTALOM KONTÉNER --- */
@@ -94,10 +63,20 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            gap: 8px;
             padding: 0 15px;
             box-sizing: border-box;
             border-top: 1px solid #333;
             z-index: 2000;
+            transition: background-color 0.3s;
+        }
+
+        #status-bar.alert-red {
+            background-color: #b30000;
+        }
+
+        .v-separator {
+            color: #777;
         }
 
         #map {
@@ -285,10 +264,7 @@
             .preset-btn { padding: 4px 0; font-size: 10px; }
             #timer-btn { min-width: 30px; }
             #uic-toggle { min-width: 36px; }
-            
-            #clock-current { font-size: 12px; }
-            #clock-db-status { font-size: 10px; gap: 4px; }
-            #db-elapsed { font-size: 12px; }
+            #clock-bar { font-size: 12px; }
             #status-bar { font-size: 10px; }
         }
 
@@ -296,16 +272,8 @@
 </head>
 <body>
 
-    <!-- Felső sáv (Idő és Adatforrás infók) -->
-    <div id="clock-bar" onclick="hardRefresh()" title="Kattints a teljes oldal újratöltéséhez">
-        <div id="clock-current">Idő szinkronizálása...</div>
-        <div id="clock-db-status">
-            <span>Adatforrás:</span>
-            <span id="db-time">Keresés...</span>
-            <span class="v-separator">|</span>
-            <span id="db-elapsed">00:00</span>
-        </div>
-    </div>
+    <!-- Felső sáv -->
+    <div id="clock-bar" onclick="hardRefresh()" title="Kattints a teljes oldal újratöltéséhez">Idő szinkronizálása...</div>
 
     <!-- Csomagolt konténer az elemek pozicionálásához -->
     <div id="app-content">
@@ -346,9 +314,12 @@
         <div id="sun-overlay"></div>
     </div>
 
-    <!-- Alsó státuszsáv -->
+    <!-- Alsó státuszsáv (Adatforrás infók) -->
     <div id="status-bar">
-        Az EMIG adatok forrása: holavonat.is
+        <span>Adatforrás dátuma:</span>
+        <span id="db-time">Keresés...</span>
+        <span class="v-separator">|</span>
+        <span id="db-elapsed">00:00</span>
     </div>
 
     <!-- Leaflet JS -->
@@ -392,7 +363,7 @@
             const min = String(now.getMinutes()).padStart(2, '0');
             const ss = String(now.getSeconds()).padStart(2, '0');
             
-            document.getElementById('clock-current').innerText = `${yyyy}.${mm}.${dd}. ${dayStr} ${hh}:${min}:${ss}`;
+            document.getElementById('clock-bar').innerText = `${yyyy}.${mm}.${dd}. ${dayStr} ${hh}:${min}:${ss}`;
 
             if (lastDbUpdateTime) {
                 const options = { timeZone: 'Europe/Budapest', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
@@ -412,12 +383,12 @@
                     document.getElementById('db-elapsed').innerText = `00:00`;
                 }
 
-                // Piros háttér figyelmeztetés a belső blokkra alkalmazva
-                const dbStatusBlock = document.getElementById('clock-db-status');
+                // Piros háttér figyelmeztetés a teljes alsó sávra alkalmazva
+                const statusBar = document.getElementById('status-bar');
                 if (elapsedMs > 5 * 60 * 1000) { 
-                    dbStatusBlock.classList.add('alert-red');
+                    statusBar.classList.add('alert-red');
                 } else {
-                    dbStatusBlock.classList.remove('alert-red');
+                    statusBar.classList.remove('alert-red');
                 }
             }
         }
