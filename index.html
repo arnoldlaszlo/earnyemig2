@@ -67,7 +67,7 @@
             border-top: 1px solid #333;
             z-index: 2000;
             transition: background-color 0.3s;
-            cursor: pointer; 
+            cursor: pointer; /* Jelzi, hogy interaktív */
         }
 
         #status-text {
@@ -83,7 +83,7 @@
             visibility: hidden;
             opacity: 0;
             position: absolute;
-            bottom: 32px; 
+            bottom: 32px; /* A státuszsáv fölé pozicionálva */
             left: 50%;
             transform: translateX(-50%);
             background-color: rgba(30, 30, 30, 0.95);
@@ -98,8 +98,8 @@
             line-height: 1.6;
             font-size: 12px;
             width: max-content;
-            max-width: 90vw; 
-            pointer-events: none; 
+            max-width: 90vw; /* Ne lógjon ki a képernyőről */
+            pointer-events: none; /* Ne zavarja a kattintásokat */
         }
 
         #status-tooltip > div {
@@ -302,7 +302,7 @@
             #status-bar { font-size: 11px; } 
             
             #status-tooltip > div {
-                white-space: normal; 
+                white-space: normal; /* Mobilon engedjük, hogy nagyon szűk helyen törjön, ha muszáj */
             }
         }
 
@@ -353,7 +353,7 @@
     </div>
 
     <!-- Alsó státuszsáv (Koppintásra / Hoverre Tooltipet mutat) -->
-    <div id="status-bar">
+    <div id="status-bar" onclick="this.classList.toggle('show-tooltip')">
         <span id="status-text">Keresés... | 00:00</span>
         
         <!-- Felugró információs ablak -->
@@ -422,12 +422,15 @@
                     timeStr = `${e_min}:${e_sec}`;
                 }
 
+                // Dátum string előkészítése
                 const dateStr = `${v.year}.${v.month}.${v.day}. ${v.hour}:${v.minute}:${v.second}`;
 
+                // Értékek beírása a sávba és a tooltipbe
                 document.getElementById('status-text').innerText = `${dateStr} | ${timeStr}`;
                 document.getElementById('tooltip-date').innerText = `Adatforrás dátuma: ${dateStr}`;
                 document.getElementById('tooltip-elapsed').innerText = `Eltérés az aktuális időhöz képest: ${timeStr}`;
 
+                // Piros háttér figyelmeztetés a teljes alsó sávra alkalmazva
                 const statusBar = document.getElementById('status-bar');
                 if (elapsedMs > 5 * 60 * 1000) { 
                     statusBar.classList.add('alert-red');
@@ -442,22 +445,6 @@
         updateClockBar();
 
         // ==========================================
-        // ESEMÉNYKEZELŐK A STÁTUSZSÁV TOOLTIPHEZ
-        // ==========================================
-        const statusBarEl = document.getElementById('status-bar');
-        
-        statusBarEl.addEventListener('click', function(e) {
-            this.classList.toggle('show-tooltip');
-            e.stopPropagation(); 
-        });
-
-        document.addEventListener('click', function(e) {
-            if (!statusBarEl.contains(e.target)) {
-                statusBarEl.classList.remove('show-tooltip');
-            }
-        });
-
-        // ==========================================
         // TÉRKÉP ALAP BEÁLLÍTÁSAI
         // ==========================================
         const map = L.map('map', { zoomControl: false });
@@ -469,12 +456,9 @@
         setInitialMapBounds(); 
 
         const filterPanel = document.getElementById('filter-panel');
+        const filterToggleBtn = document.getElementById('filter-toggle');
         
-        map.on('click', function() { 
-            filterPanel.classList.remove('show'); 
-            statusBarEl.classList.remove('show-tooltip');
-        });
-        
+        map.on('click', function() { filterPanel.classList.remove('show'); });
         L.DomEvent.disableClickPropagation(document.getElementById('filter-container'));
         L.DomEvent.disableClickPropagation(document.getElementById('top-controls'));
         L.DomEvent.disableClickPropagation(document.getElementById('bottom-left-controls'));
@@ -619,9 +603,8 @@
 
         function getMavColor(delay, trainNumber) {
             if (!useMavColors) return "#ffffff"; 
-            const trainNumStr = String(trainNumber);
-            const hasTrainNumber = trainNumStr !== 'Ismeretlen' && trainNumStr.trim() !== '';
-            const trainNumInt = parseInt(trainNumStr, 10);
+            const hasTrainNumber = trainNumber !== 'Ismeretlen' && trainNumber.toString().trim() !== '';
+            const trainNumInt = parseInt(trainNumber, 10);
             const isFreightTrain = !isNaN(trainNumInt) && trainNumInt >= 40000;
 
             if (!hasTrainNumber || isFreightTrain) return "#888888"; 
@@ -665,16 +648,14 @@
                     <path d="M12 4 L17 11 L13 11 L13 18 L11 18 L11 11 L7 11 Z" fill="#222222"/>
                 </g>` : '';
 
-            // Szigorú string konverzió a replace védelemhez
-            let shortUic = String(uic || "???");
+            let shortUic = uic || "???";
             const cln = shortUic.replace(/\D/g, ''); 
             if (cln.length === 12) shortUic = cln.charAt(4) === '8' ? cln.substring(4,8)+' '+cln.substring(8,11) : cln.substring(5,8)+' '+cln.substring(8,11);
             else if (cln.length >= 7 && cln.charAt(0) === '8') shortUic = cln.substring(0,4)+' '+cln.substring(4,7);
             else if (cln.length >= 6) shortUic = cln.substring(0,3)+' '+cln.substring(3,6);
 
-            const trStr = String(trainNumber);
-            const hasTr = trStr !== 'Ismeretlen' && trStr.trim() !== '';
-            const trText = `${hasTr ? trStr : '-'}, ${delay > 0 ? '+'+delay : '+0'}`;
+            const hasTr = trainNumber !== 'Ismeretlen' && trainNumber.toString().trim() !== '';
+            const trText = `${hasTr ? trainNumber : '-'}, ${delay > 0 ? '+'+delay : '+0'}`;
 
             return L.divIcon({
                 className: 'custom-div-icon',
@@ -696,20 +677,10 @@
             if (isFilterActive) filterToggleBtn.classList.add('has-active-filter');
             else filterToggleBtn.classList.remove('has-active-filter');
 
-            if (!Array.isArray(allLocomotives)) return;
-
             allLocomotives.forEach(loco => {
-                // Típusellenőrzés: ha váratlan adat (pl. null vagy string) kerül a tömbbe, ugorjuk át
-                if (!loco || typeof loco !== 'object') return; 
-
-                // Garantált string típusok a hívások (includes, toLowerCase) védelmében
-                const rawUic = loco.uic || loco.UIC || 'Ismeretlen';
-                const uic = String(rawUic); 
-                
-                const rawTrainNumber = loco.trainNumber || loco.TrainNumber || loco.flight || 'Ismeretlen';
-                const trainNumber = String(rawTrainNumber); 
-                
-                const hasTrainNumber = trainNumber !== 'Ismeretlen' && trainNumber.trim() !== '';
+                const uic = loco.uic || loco.UIC || 'Ismeretlen';
+                const trainNumber = loco.trainNumber || loco.TrainNumber || loco.flight || 'Ismeretlen';
+                const hasTrainNumber = trainNumber !== 'Ismeretlen' && trainNumber.toString().trim() !== '';
                 const trainNumInt = parseInt(trainNumber, 10);
                 const isT = !isNaN(trainNumInt) && trainNumInt >= 40000;
                 let match = false;
@@ -729,11 +700,7 @@
 
                 if (searchTerms.length > 0) {
                     let textMatch = false;
-                    for (const term of searchTerms) { 
-                        if (uic.toLowerCase().includes(term) || trainNumber.toLowerCase().includes(term)) { 
-                            textMatch = true; break; 
-                        } 
-                    }
+                    for (const term of searchTerms) { if (uic.toLowerCase().includes(term) || trainNumber.toString().toLowerCase().includes(term)) { textMatch = true; break; } }
                     if (!textMatch) return; 
                 }
 
@@ -784,18 +751,10 @@
                 }
 
                 let locomotives = [];
-                if (Array.isArray(data)) {
-                    locomotives = data;
-                } else if (typeof data === 'object' && data !== null) {
-                    // Szigorú védelem: csak a tényleges objektumokat tartjuk meg a listából
-                    locomotives = Object.values(data).filter(v => typeof v === 'object' && v !== null);
-                    
-                    for (let key in data) { 
-                        if (Array.isArray(data[key])) { 
-                            locomotives = data[key]; 
-                            break; 
-                        } 
-                    }
+                if (Array.isArray(data)) locomotives = data;
+                else if (typeof data === 'object') {
+                    locomotives = Object.values(data);
+                    for (let key in data) { if (Array.isArray(data[key])) { locomotives = data[key]; break; } }
                 }
                 allLocomotives = locomotives; 
                 
