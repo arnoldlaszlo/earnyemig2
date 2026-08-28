@@ -36,6 +36,12 @@
             justify-content: center;
             border-bottom: 1px solid #333;
             z-index: 2000;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        #clock-bar:hover, #clock-bar:active {
+            background-color: #2a2a2a;
         }
 
         /* --- FŐ TARTALOM KONTÉNER --- */
@@ -46,6 +52,28 @@
             height: 100%;
         }
         
+        /* --- ALSÓ STÁTUSZ SÁV --- */
+        #status-bar {
+            flex: 0 0 25px;
+            width: 100%;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            font-family: monospace;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+            box-sizing: border-box;
+            border-top: 1px solid #333;
+            z-index: 2000;
+            transition: background-color 0.3s;
+        }
+
+        #status-bar.alert-red {
+            background-color: #b30000;
+        }
+
         #map {
             height: 100%;
             width: 100%;
@@ -192,15 +220,15 @@
             .preset-btn { padding: 4px 0; font-size: 10px; }
             #timer-btn { min-width: 30px; }
             #uic-toggle { min-width: 36px; }
-            #clock-bar { font-size: 12px; }
+            #clock-bar, #status-bar { font-size: 12px; }
         }
 
     </style>
 </head>
 <body>
 
-    <!-- Felső sáv az órának -->
-    <div id="clock-bar">Idő szinkronizálása...</div>
+    <!-- Felső sáv az órának (újratöltés gombként funkcionál) -->
+    <div id="clock-bar" onclick="hardRefresh()" title="Kattints a teljes oldal újratöltéséhez">Idő szinkronizálása...</div>
 
     <!-- Csomagolt konténer az elemek pozicionálásához -->
     <div id="app-content">
@@ -241,24 +269,37 @@
         <div id="sun-overlay"></div>
     </div>
 
+    <!-- Alsó státuszsáv az adatbázis frissítési idejének -->
+    <div id="status-bar">
+        <span id="db-time">Adatbázis állapota: Keresés...</span>
+        <span id="db-elapsed">00:00</span>
+    </div>
+
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // ==========================================
-        // PONTOS IDŐ (NTP HTTP) LOGIKA
+        // PONTOS IDŐ (NTP HTTP) LOGIKA ÉS CACHE
         // ==========================================
         let timeOffset = 0; // Különbség milliszekundumban az NTP és a helyi gép között
+        let lastDbUpdateTime = null; // Globális változó az adatbázis frissítés idejének
         const daysMap = ['V', 'H', 'K', 'Sze', 'Cs', 'P', 'Szo'];
         
+        function hardRefresh() {
+            // URL paraméter frissítés a webapp gyorsítótár ürítéséhez
+            const url = new URL(window.location.href);
+            url.searchParams.set('_v', Date.now());
+            window.location.href = url.toString();
+        }
+
         async function syncTimeWithNTP() {
             try {
-                // HTTP API lekérdezése a pontos időhöz (Budapesti zóna)
                 const response = await fetch('https://worldtimeapi.org/api/timezone/Europe/Budapest');
                 if (response.ok) {
                     const data = await response.json();
                     const ntpTime = new Date(data.datetime).getTime();
                     const localTime = Date.now();
-                    timeOffset = ntpTime - localTime; // Eltérés mentése
+                    timeOffset = ntpTime - localTime; 
                 }
             } catch (err) {
                 console.warn('Nem sikerült az NTP szinkronizáció, a helyi időt használjuk.', err);
@@ -266,7 +307,8 @@
         }
 
         function updateClockBar() {
-            const now = new Date(Date.now() + timeOffset);
+            const nowMs = Date.now() + timeOffset;
+            const now = new Date(nowMs);
             const yyyy = now.getFullYear();
             const mm = String(now.getMonth() + 1).padStart(2, '0');
             const dd = String(now.getDate()).padStart(2, '0');
@@ -275,11 +317,37 @@
             const min = String(now.getMinutes()).padStart(2, '0');
             const ss = String(now.getSeconds()).padStart(2, '0');
             
-            // DÁTUM FORMÁTUM MÓDOSÍTVA (pontokkal elválasztva)
             document.getElementById('clock-bar').innerText = `${yyyy}.${mm}.${dd}. ${dayStr} ${hh}:${min}:${ss}`;
+
+            // Adatbázis státuszsáv frissítése
+            if (lastDbUpdateTime) {
+                // Formázás Magyarországi időzónára
+                const options = { timeZone: 'Europe/Budapest', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+                const parts = new Intl.DateTimeFormat('hu-HU', options).formatToParts(new Date(lastDbUpdateTime));
+                let v = {}; parts.forEach(p => v[p.type] = p.value);
+                
+                document.getElementById('db-time').innerText = `${v.year}.${v.month}.${v.day}. ${v.hour}:${v.minute}:${v.second}`;
+
+                const elapsedMs = nowMs - lastDbUpdateTime;
+                const elapsedSecTotal = Math.floor(elapsedMs / 1000);
+                
+                if (elapsedSecTotal >= 0) {
+                    const e_min = String(Math.floor(elapsedSecTotal / 60)).padStart(2, '0');
+                    const e_sec = String(elapsedSecTotal % 60).padStart(2, '0');
+                    document.getElementById('db-elapsed').innerText = `${e_min}:${e_sec}`;
+                } else {
+                    document.getElementById('db-elapsed').innerText = `00:00`;
+                }
+
+                const statusBar = document.getElementById('status-bar');
+                if (elapsedMs > 5 * 60 * 1000) { // 5 perc küszöb
+                    statusBar.classList.add('alert-red');
+                } else {
+                    statusBar.classList.remove('alert-red');
+                }
+            }
         }
 
-        // Szinkronizálás indítása, majd az óra léptetése másodpercenként
         syncTimeWithNTP();
         setInterval(updateClockBar, 1000);
         updateClockBar();
@@ -352,11 +420,9 @@
             if (sunOverlay.style.display === 'none') return;
 
             const center = map.getCenter();
-            // A pontosított időt használjuk a napálláshoz is!
             const now = new Date(Date.now() + timeOffset);
             const times = SunCalc.getTimes(now, center.lat, center.lng);
 
-            // 360x360 a ViewBox (Ezt skálázza a CSS 150%-ra asztalin)
             const cx = 180, cy = 180; 
             const rBase = 120; 
 
@@ -379,7 +445,6 @@
                 arcPoints.push(`${pt.x},${pt.y}`);
             }
 
-            // Óránkénti osztások + Vékony vonal a középpont felé
             let hourlyTicksSvg = '';
             let startHour = new Date(startTs);
             startHour.setMinutes(0, 0, 0);
@@ -390,17 +455,13 @@
                 let pos = SunCalc.getPosition(dateT, center.lat, center.lng);
                 let az = getMapAzimuth(pos.azimuth);
                 
-                // Osztás pontjai (Inner = vékony vonal kezdete befelé ~55%-ig)
                 let pInner = polarToCartesian(cx, cy, rBase * 0.55, az);
                 let p1 = polarToCartesian(cx, cy, rBase - 5, az);
                 let p2 = polarToCartesian(cx, cy, rBase + 5, az);
                 let textP = polarToCartesian(cx, cy, rBase + 16, az);
                 
-                // MÓDOSÍTOTT VONAL VASTAGSÁG ÉS KONTARASZT
                 hourlyTicksSvg += `
-                    <!-- Erősebb vonal befelé -->
                     <line x1="${pInner.x}" y1="${pInner.y}" x2="${p1.x}" y2="${p1.y}" stroke="#ffd700" stroke-width="1.5" stroke-dasharray="4,4" opacity="0.8" />
-                    <!-- Vastag óra osztás az íven -->
                     <line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="#ffd700" stroke-width="3" />
                     <text x="${textP.x}" y="${textP.y}" fill="#ffd700" font-size="12" class="sun-text" text-anchor="middle" dominant-baseline="middle">${dateT.getHours()}</text>
                 `;
@@ -413,31 +474,17 @@
             const textSunrise = polarToCartesian(cx, cy, rBase + 35, azSunrise);
             const textSunset = polarToCartesian(cx, cy, rBase + 35, azSunset);
 
-            // SVG összeállítása
             let svg = `
             <svg width="100%" height="100%" viewBox="0 0 360 360" xmlns="http://www.w3.org/2000/svg">
-                <!-- Halvány háttérkör -->
                 <circle cx="${cx}" cy="${cy}" r="${rBase}" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" stroke-dasharray="5,5" />
-                
-                <!-- Nappali nap-ív -->
                 <polyline points="${arcPoints.join(' ')}" fill="none" stroke="rgba(255, 215, 0, 0.4)" stroke-width="6" />
-                
-                <!-- Napkelte és Napnyugta vonalak -->
                 <line x1="${cx}" y1="${cy}" x2="${ptSunrise.x}" y2="${ptSunrise.y}" stroke="#ff9800" stroke-width="2" stroke-dasharray="4,4" />
                 <line x1="${cx}" y1="${cy}" x2="${ptSunset.x}" y2="${ptSunset.y}" stroke="#f44336" stroke-width="2" stroke-dasharray="4,4" />
-                
-                <!-- Napkelte / Napnyugta órák -->
                 <text x="${textSunrise.x}" y="${textSunrise.y}" fill="#ff9800" font-size="12" class="sun-text" text-anchor="middle">${formatTime(times.sunrise)}</text>
                 <text x="${textSunset.x}" y="${textSunset.y}" fill="#f44336" font-size="12" class="sun-text" text-anchor="middle">${formatTime(times.sunset)}</text>
-
-                <!-- Óra osztások + vékony bevezető vonalak -->
                 ${hourlyTicksSvg}
-
-                <!-- Jelenlegi napállás vonal és nap ikon -->
                 <line x1="${cx}" y1="${cy}" x2="${ptNow.x}" y2="${ptNow.y}" stroke="#ffeb3b" stroke-width="2" />
                 <circle cx="${ptNow.x}" cy="${ptNow.y}" r="6" fill="#ffeb3b" stroke="#000" stroke-width="1" />
-                
-                <!-- Középpont jelölő -->
                 <circle cx="${cx}" cy="${cy}" r="4" fill="#ffffff" />
             </svg>
             `;
@@ -585,13 +632,41 @@
                 if (!response.ok) throw new Error('Hálózati hiba');
                 const data = await response.json();
 
+                // JSON timestamp keresése (a leggyakoribb mezőnevek alapján)
+                let extractedTime = null;
+                if (data && typeof data === 'object' && !Array.isArray(data)) {
+                    const timeKeys = ['timestamp', 'time', 'lastUpdated', 'updatedAt', 'created_at', 'date', 'last_update'];
+                    for (let k of timeKeys) {
+                        if (data[k]) {
+                            let parsed = Number(data[k]);
+                            if (isNaN(parsed)) parsed = new Date(data[k]).getTime();
+                            else if (parsed < 10000000000) parsed *= 1000; // UNIX másodperc konverzió ms-re
+                            
+                            if (!isNaN(parsed)) {
+                                extractedTime = parsed;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                // Fallback, ha nincs egzakt időbélyeg a gyökér szintjén a JSON-ben
+                if (extractedTime) {
+                    lastDbUpdateTime = extractedTime;
+                } else {
+                    lastDbUpdateTime = Date.now() + timeOffset;
+                }
+
                 let locomotives = [];
                 if (Array.isArray(data)) locomotives = data;
                 else if (typeof data === 'object') {
                     locomotives = Object.values(data);
                     for (let key in data) { if (Array.isArray(data[key])) { locomotives = data[key]; break; } }
                 }
-                allLocomotives = locomotives; renderLocomotives();
+                allLocomotives = locomotives; 
+                
+                renderLocomotives();
+                updateClockBar(); // Azonnali UI frissítés az adatok megérkezésekor
             } catch (error) { console.error('Hiba frissítéskor:', error); }
         }
 
