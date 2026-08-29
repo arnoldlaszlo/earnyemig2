@@ -640,7 +640,7 @@
                 html: `
                 <div style="position: relative; width: 24px; height: 24px;">
                     <svg width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="${fillColor}" stroke="#222222" stroke-width="2"/>${arrowElement}</svg>
-                    <div class="info-bubble uic-bubble">${shortUic}</div><div class="info-bubble train-bubble">${shortUic}<br>${trText}</div>
+                    <div class="info-bubble uic-bubble" style="border-color: ${fillColor}; color: ${fillColor};">${shortUic}</div><div class="info-bubble train-bubble" style="border-color: ${fillColor}; color: ${fillColor};">${shortUic}<br>${trText}</div>
                 </div>`,
                 iconSize: [24, 24], iconAnchor: [12, 12] 
             });
