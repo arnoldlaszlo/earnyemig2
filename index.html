@@ -284,6 +284,8 @@
                 <div class="preset-buttons">
                     <button class="control-btn preset-btn" onclick="togglePreset('VSz', this)" title="Csak vonatszámmal rendelkezők">VSz</button>
                     <button class="control-btn preset-btn" onclick="togglePreset('NVSz', this)" title="Vonatszám nélküliek">NVSz</button>
+                    <button class="control-btn preset-btn" onclick="togglePreset('Mozog', this)" title="Csak mozgó járművek">Mozog</button>
+                    <button class="control-btn preset-btn" onclick="togglePreset('Áll', this)" title="Csak álló járművek">Áll</button>
                     <button class="control-btn preset-btn" onclick="togglePreset('630', this)">630</button>
                     <button class="control-btn preset-btn" onclick="togglePreset('431', this)">431</button>
                     <button class="control-btn preset-btn" onclick="togglePreset('628', this)">628</button>
@@ -623,10 +625,10 @@
 
         function manualRefresh() { timeLeft = UPDATE_INTERVAL; timerBtn.textContent = timeLeft; fetchLocomotiveData(); }
 
-        function createDirectionalIcon(heading, uic, delay, trainNumber) {
+        function createDirectionalIcon(heading, uic, delay, trainNumber, isMoving) {
             const rotation = (heading !== null && heading !== undefined) ? heading : 0; 
             const fillColor = getMavColor(delay, trainNumber);
-            const arrowElement = (heading !== null && heading !== undefined) ? `
+            const arrowElement = (isMoving !== false) ? `
                 <g transform="rotate(${rotation} 12 12)">
                     <path d="M12 4 L17 11 L13 11 L13 18 L11 18 L11 11 L7 11 Z" fill="#222222"/>
                 </g>` : '';
@@ -666,6 +668,7 @@
                 const hasTrainNumber = trainNumber !== 'Ismeretlen' && trainNumber.toString().trim() !== '';
                 const trainNumInt = parseInt(trainNumber, 10);
                 const isT = !isNaN(trainNumInt) && trainNumInt >= 40000;
+                const isMoving = loco.moving !== undefined ? loco.moving : loco.Moving;
                 let match = false;
                 
                 if (activePresets.has('all')) match = true;
@@ -678,6 +681,8 @@
                     if (activePresets.has('VSz') && hasTrainNumber) match = true;
                     if (activePresets.has('NVSz') && !hasTrainNumber) match = true;
                     if (activePresets.has('T') && isT) match = true;
+                    if (activePresets.has('Mozog') && isMoving === true) match = true;
+                    if (activePresets.has('Áll') && isMoving === false) match = true;
                 }
                 if (!match) return;
 
@@ -692,7 +697,7 @@
                 if (lat && lon) {
                     const delayMin = parseInt(loco.delayMin || loco.delay || 0, 10);
                     const heading = loco.heading !== undefined ? loco.heading : (loco.Heading !== undefined ? loco.Heading : loco.direction);
-                    const marker = L.marker([lat, lon], { icon: createDirectionalIcon(heading, uic, delayMin, trainNumber) });
+                    const marker = L.marker([lat, lon], { icon: createDirectionalIcon(heading, uic, delayMin, trainNumber, isMoving) });
                     
                     marker.bindTooltip(`<div><b>UIC:</b> ${uic}<br><b>Vonat:</b> ${trainNumber}<br><b>Útvonal:</b> ${loco.from || loco.origin || '-'} &#10141; ${loco.to || loco.destination || '-'}<br><b>Késés:</b> ${delayMin > 0 ? '<span class="delay-warning">+'+delayMin+' perc</span>' : '0 perc'}</div>`, { className: 'train-tooltip', direction: 'top', offset: [0, -10], opacity: 1 });
                     marker.addTo(markerGroup);
