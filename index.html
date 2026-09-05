@@ -252,6 +252,9 @@
             #clock-bar { font-size: 12px; }
             #status-bar { font-size: 11px; }
         }
+    
+        .top-btn { height: 38px; box-sizing: border-box; padding: 0 12px !important; }
+        @media (max-width: 768px) { .top-btn { height: 32px; padding: 0 8px !important; } }
     </style>
 </head>
 <body>
@@ -261,11 +264,11 @@
     <div id="app-content">
         <div id="filter-container">
             <div style="display: flex; gap: 5px;">
-                <div id="filter-toggle" class="control-btn" style="width: max-content;" onclick="toggleFilterPanel()">
+                <div id="filter-toggle" class="control-btn top-btn" style="width: max-content;" onclick="toggleFilterPanel()">
                     🔍 Szűrők
                 </div>
                 
-                <div id="color-toggle" class="control-btn" onclick="toggleColors()" title="Váltás a késés alapú színezésre">
+                <div id="color-toggle" class="control-btn top-btn" onclick="toggleColors()" title="Váltás a késés alapú színezésre">
                     SZ
                     <svg width="24" height="12" viewBox="0 0 24 12" style="margin-left: 5px;">
                         <circle cx="4" cy="6" r="3.5" fill="#4caf50" stroke="#222222" stroke-width="1"/>
@@ -297,12 +300,12 @@
         </div>
 
         <div id="top-controls">
-            <div id="uic-toggle" class="control-btn" onclick="toggleUIC()" title="Feliratok léptetése">UIC</div>
-            <div id="timer-btn" class="control-btn" onclick="manualRefresh()" title="Azonnali frissítés">30</div>
+            <div id="uic-toggle" class="control-btn top-btn" onclick="toggleUIC()" title="Feliratok léptetése">UIC</div>
+            <div id="timer-btn" class="control-btn top-btn" onclick="manualRefresh()" title="Azonnali frissítés">30</div>
         </div>
 
         <div id="bottom-left-controls">
-            <div id="wakelock-toggle" class="control-btn" onclick="toggleWakeLock()" title="Kijelző ébrentartása">💡 Ébrentartás</div>
+            <div id="wakelock-toggle" class="control-btn top-btn" onclick="toggleWakeLock()" title="Kijelző ébrentartása">💡 Ébrentartás</div>
         </div>
 
         <div id="map"></div>
@@ -669,20 +672,38 @@
                 const trainNumInt = parseInt(trainNumber, 10);
                 const isT = !isNaN(trainNumInt) && trainNumInt >= 40000;
                 const isMoving = loco.moving !== undefined ? loco.moving : loco.Moving;
-                let match = false;
-                
-                if (activePresets.has('all')) match = true;
-                else {
-                    if (activePresets.has('630') && uic.includes('630')) match = true;
-                    if (activePresets.has('431') && uic.includes('431')) match = true;
-                    if (activePresets.has('43X') && (uic.includes('430') || uic.includes('432') || uic.includes('433'))) match = true;
-                    if (activePresets.has('628') && uic.includes('628')) match = true;
-                    if (activePresets.has('418') && uic.includes('418')) match = true;
-                    if (activePresets.has('VSz') && hasTrainNumber) match = true;
-                    if (activePresets.has('NVSz') && !hasTrainNumber) match = true;
-                    if (activePresets.has('T') && isT) match = true;
-                    if (activePresets.has('Mozog') && isMoving === true) match = true;
-                    if (activePresets.has('Áll') && isMoving === false) match = true;
+                                let match = true;
+                if (!activePresets.has('all')) {
+                    const types = ['630', '431', '628', '418', '43X'];
+                    const activeTypes = types.filter(t => activePresets.has(t));
+                    if (activeTypes.length > 0) {
+                        let typeMatch = false;
+                        if (activePresets.has('630') && uic.includes('630')) typeMatch = true;
+                        if (activePresets.has('431') && uic.includes('431')) typeMatch = true;
+                        if (activePresets.has('43X') && (uic.includes('430') || uic.includes('432') || uic.includes('433'))) typeMatch = true;
+                        if (activePresets.has('628') && uic.includes('628')) typeMatch = true;
+                        if (activePresets.has('418') && uic.includes('418')) typeMatch = true;
+                        if (!typeMatch) match = false;
+                    }
+
+                    const vszProps = ['VSz', 'NVSz', 'T'];
+                    const activeVsz = vszProps.filter(t => activePresets.has(t));
+                    if (activeVsz.length > 0) {
+                        let vszMatch = false;
+                        if (activePresets.has('VSz') && hasTrainNumber) vszMatch = true;
+                        if (activePresets.has('NVSz') && !hasTrainNumber) vszMatch = true;
+                        if (activePresets.has('T') && isT) vszMatch = true;
+                        if (!vszMatch) match = false;
+                    }
+
+                    const moveProps = ['Mozog', 'Áll'];
+                    const activeMove = moveProps.filter(t => activePresets.has(t));
+                    if (activeMove.length > 0) {
+                        let moveMatch = false;
+                        if (activePresets.has('Mozog') && isMoving === true) moveMatch = true;
+                        if (activePresets.has('Áll') && isMoving === false) moveMatch = true;
+                        if (!moveMatch) match = false;
+                    }
                 }
                 if (!match) return;
 
