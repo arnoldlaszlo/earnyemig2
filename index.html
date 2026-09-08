@@ -295,6 +295,10 @@
                     <button class="control-btn preset-btn" onclick="togglePreset('418', this)">418</button>
                     <button class="control-btn preset-btn" onclick="togglePreset('43X', this)">43X</button>
                     <button class="control-btn preset-btn" onclick="togglePreset('T', this)" title="40000 és e feletti vonatszámok">T</button>
+                    <button class="control-btn preset-btn" style="color: #4caf50; border-color: #4caf50;" onclick="togglePreset('Zöld', this)" title="Pontos vagy <5 perc (csak VSz)">Zöld</button>
+                    <button class="control-btn preset-btn" style="color: #ffeb3b; border-color: #ffeb3b;" onclick="togglePreset('Sárga', this)" title="5-14 perc késés (csak VSz)">Sárga</button>
+                    <button class="control-btn preset-btn" style="color: #ff9800; border-color: #ff9800;" onclick="togglePreset('Narancs', this)" title="15-59 perc késés (csak VSz)">Narancs</button>
+                    <button class="control-btn preset-btn" style="color: #f44336; border-color: #f44336;" onclick="togglePreset('Piros', this)" title="60+ perc késés (csak VSz)">Piros</button>
                 </div>
             </div>
         </div>
@@ -672,7 +676,8 @@
                 const trainNumInt = parseInt(trainNumber, 10);
                 const isT = !isNaN(trainNumInt) && trainNumInt >= 40000;
                 const isMoving = loco.moving !== undefined ? loco.moving : loco.Moving;
-                                let match = true;
+                const delayMin = parseInt(loco.delayMin || loco.delay || 0, 10);
+                let match = true;
                 if (!activePresets.has('all')) {
                     const types = ['630', '431', '628', '418', '43X'];
                     const activeTypes = types.filter(t => activePresets.has(t));
@@ -704,6 +709,19 @@
                         if (activePresets.has('Áll') && isMoving === false) moveMatch = true;
                         if (!moveMatch) match = false;
                     }
+
+                    const delayProps = ['Zöld', 'Sárga', 'Narancs', 'Piros'];
+                    const activeDelay = delayProps.filter(t => activePresets.has(t));
+                    if (activeDelay.length > 0) {
+                        let delayMatch = false;
+                        if (hasTrainNumber) {
+                            if (activePresets.has('Zöld') && delayMin < 5) delayMatch = true;
+                            if (activePresets.has('Sárga') && delayMin >= 5 && delayMin < 15) delayMatch = true;
+                            if (activePresets.has('Narancs') && delayMin >= 15 && delayMin < 60) delayMatch = true;
+                            if (activePresets.has('Piros') && delayMin >= 60) delayMatch = true; 
+                        }
+                        if (!delayMatch) match = false;
+                    }
                 }
                 if (!match) return;
 
@@ -716,7 +734,6 @@
                 const lat = loco.lat || loco.Lat || loco.latitude || loco.Latitude;
                 const lon = loco.lon || loco.lng || loco.Lon || loco.Lng || loco.longitude || loco.Longitude;
                 if (lat && lon) {
-                    const delayMin = parseInt(loco.delayMin || loco.delay || 0, 10);
                     const heading = loco.heading !== undefined ? loco.heading : (loco.Heading !== undefined ? loco.Heading : loco.direction);
                     const marker = L.marker([lat, lon], { icon: createDirectionalIcon(heading, uic, delayMin, trainNumber, isMoving) });
                     
