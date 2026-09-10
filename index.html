@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mozdonykereső - Holavonat.is (EMIG) - Menetrenddel v15</title>
+    <title>Mozdonykereső - Holavonat.is (EMIG) - Dark Mode + Napsütés</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -255,101 +255,6 @@
     
         .top-btn { height: 38px; box-sizing: border-box; padding: 0 12px !important; }
         @media (max-width: 768px) { .top-btn { height: 32px; padding: 0 8px !important; } }
-
-        /* --- MENETREND PANEL STÍLUSOK --- */
-        #schedule-panel {
-            position: absolute;
-            top: 0;
-            right: -400px;
-            width: 350px;
-            height: 100%;
-            background-color: rgba(18, 18, 18, 0.95);
-            border-left: 1px solid #444;
-            box-shadow: -4px 0 15px rgba(0,0,0,0.7);
-            z-index: 2500;
-            transition: right 0.3s ease-in-out;
-            display: flex;
-            flex-direction: column;
-            color: #ffffff;
-            max-width: 100vw;
-        }
-
-        #schedule-panel.open {
-            right: 0;
-        }
-
-        .schedule-header {
-            padding: 15px;
-            background-color: #1a1a1a;
-            border-bottom: 1px solid #333;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-        }
-
-        .schedule-header h3 {
-            margin: 0;
-            color: #66b3ff;
-            font-size: 16px;
-            line-height: 1.3;
-        }
-        
-        .schedule-uic-sub {
-            font-size: 12px;
-            color: #aaaaaa;
-            font-weight: normal;
-            display: block;
-            margin-top: 2px;
-        }
-
-        .close-btn {
-            background: #f44336;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        .schedule-content {
-            padding: 15px;
-            overflow-y: auto;
-            flex: 1;
-            font-size: 14px;
-        }
-
-        .schedule-row {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            padding: 10px 0;
-            border-bottom: 1px solid #333;
-        }
-        
-        .sch-station {
-            font-weight: bold;
-            font-size: 15px;
-            color: #ffffff;
-        }
-        
-        .sch-times {
-            display: flex;
-            justify-content: space-between;
-            font-size: 13px;
-            color: #aaaaaa;
-        }
-
-        .time-delayed {
-            color: #ff9800;
-            font-weight: bold;
-        }
-        .time-scheduled {
-            text-decoration: line-through;
-            font-size: 11px;
-            opacity: 0.7;
-            margin-right: 4px;
-        }
     </style>
 </head>
 <body>
@@ -409,17 +314,6 @@
 
         <div id="map"></div>
         <div id="sun-overlay"></div>
-        
-        <!-- ÚJ MENETREND PANEL -->
-        <div id="schedule-panel">
-            <div class="schedule-header">
-                <h3 id="schedule-title">Menetrend</h3>
-                <button class="close-btn" onclick="closeSchedule()">X</button>
-            </div>
-            <div id="schedule-content" class="schedule-content">
-                <!-- Ide töltődik be a menetrend dinamikusan -->
-            </div>
-        </div>
     </div>
 
     <div id="status-bar">Keresés... | 00:00</div>
@@ -514,7 +408,6 @@
         L.DomEvent.disableClickPropagation(document.getElementById('filter-container'));
         L.DomEvent.disableClickPropagation(document.getElementById('top-controls'));
         L.DomEvent.disableClickPropagation(document.getElementById('bottom-left-controls'));
-        L.DomEvent.disableClickPropagation(document.getElementById('schedule-panel'));
 
         const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
         const topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17, attribution: '&copy; OpenTopoMap' });
@@ -778,15 +671,12 @@
 
             allLocomotives.forEach(loco => {
                 const uic = loco.uic || loco.UIC || 'Ismeretlen';
-                const uicRaw = loco.uicRaw || loco.UICRaw || loco.vehicleId || uic; 
-                
                 const trainNumber = loco.trainNumber || loco.TrainNumber || loco.flight || 'Ismeretlen';
                 const hasTrainNumber = trainNumber !== 'Ismeretlen' && trainNumber.toString().trim() !== '';
                 const trainNumInt = parseInt(trainNumber, 10);
                 const isT = !isNaN(trainNumInt) && trainNumInt >= 40000;
                 const isMoving = loco.moving !== undefined ? loco.moving : loco.Moving;
                 const delayMin = parseInt(loco.delayMin || loco.delay || 0, 10);
-                
                 let match = true;
                 if (!activePresets.has('all')) {
                     const types = ['630', '431', '628', '418', '43X'];
@@ -848,11 +738,6 @@
                     const marker = L.marker([lat, lon], { icon: createDirectionalIcon(heading, uic, delayMin, trainNumber, isMoving) });
                     
                     marker.bindTooltip(`<div><b>UIC:</b> ${uic}<br><b>Vonat:</b> ${trainNumber}<br><b>Útvonal:</b> ${loco.from || loco.origin || '-'} &#10141; ${loco.to || loco.destination || '-'}<br><b>Késés:</b> ${delayMin > 0 ? '<span class="delay-warning">+'+delayMin+' perc</span>' : '0 perc'}</div>`, { className: 'train-tooltip', direction: 'top', offset: [0, -10], opacity: 1 });
-                    
-                    marker.on('click', function() {
-                        openSchedule(trainNumber, uicRaw, delayMin);
-                    });
-                    
                     marker.addTo(markerGroup);
                 }
             });
@@ -912,154 +797,6 @@
 
         fetchLocomotiveData();
         setInterval(updateTimer, 1000);
-
-        // ==========================================
-        // ÚJ MENETREND LOGIKA ÉS CACHE (v15 - Formázások)
-        // ==========================================
-        
-        function closeSchedule() {
-            document.getElementById('schedule-panel').classList.remove('open');
-        }
-
-        let cachedScheduleData = null;
-
-        // Okos időformázó függvény: Másodperceket és stringeket is kezel
-        function formatTimeDisplay(timeVal) {
-            if (timeVal === null || timeVal === undefined || timeVal === '') return '-';
-            
-            let numVal = Number(timeVal);
-            
-            // Ha éjféltől számított másodperc (pl. 45000 -> 12:30). 
-            // 1 nap = 86400 mp. Ami 172800 (2 nap) alatti szám, az tuti ez.
-            if (!isNaN(numVal) && numVal >= 0 && numVal <= 172800 && String(timeVal).indexOf(':') === -1) {
-                let h = Math.floor(numVal / 3600) % 24;
-                let m = Math.floor((numVal % 3600) / 60);
-                return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
-            }
-            
-            // Ha véletlenül Unix timestamp lenne (nagyon nagy szám)
-            if (!isNaN(numVal) && numVal > 100000000) {
-                const d = new Date(numVal * (numVal < 10000000000 ? 1000 : 1));
-                return d.toLocaleTimeString('hu-HU', {hour: '2-digit', minute:'2-digit'});
-            }
-            
-            // String esetén ("14:30:00" -> "14:30")
-            if (typeof timeVal === 'string') {
-                if (timeVal.includes('T')) {
-                    const d = new Date(timeVal);
-                    return d.toLocaleTimeString('hu-HU', {hour: '2-digit', minute:'2-digit'});
-                }
-                return timeVal.split(':').slice(0, 2).join(':');
-            }
-            
-            return timeVal;
-        }
-
-        function findTrainDeep(obj, sTrainNum, sUicNum) {
-            if (!obj || typeof obj !== 'object') return null;
-
-            const cleanNum = (s) => s ? String(s).replace(/\D/g, '') : '';
-
-            const tTripNum = cleanNum(obj.tripNumber);
-            const tVehNum = cleanNum(obj.vehicleId);
-
-            const matchTrain = (tTripNum !== '' && sTrainNum !== '' && tTripNum === sTrainNum);
-            const matchVeh = (tVehNum !== '' && sUicNum !== '' && tVehNum === sUicNum);
-
-            if ((matchTrain || matchVeh) && obj.stoptimes) {
-                return obj;
-            }
-
-            if (Array.isArray(obj)) {
-                for (let i = 0; i < obj.length; i++) {
-                    const res = findTrainDeep(obj[i], sTrainNum, sUicNum);
-                    if (res) return res;
-                }
-            } else {
-                for (let key in obj) {
-                    if (Object.prototype.hasOwnProperty.call(obj, key)) {
-                        const res = findTrainDeep(obj[key], sTrainNum, sUicNum);
-                        if (res) return res;
-                    }
-                }
-            }
-            return null;
-        }
-
-        async function openSchedule(trainNumber, uicRaw, currentDelay) {
-            const panel = document.getElementById('schedule-panel');
-            const content = document.getElementById('schedule-content');
-            const title = document.getElementById('schedule-title');
-            
-            const displayTrainNum = (trainNumber !== 'Ismeretlen') ? trainNumber : 'N/A';
-            
-            // JAVÍTVA: UIC kiírása és stílusos fejléc
-            const delayText = currentDelay > 0 ? `<span style="color:#ff5555; font-size:14px; margin-left:6px;">(+${currentDelay}')</span>` : '';
-            title.innerHTML = `Vonat: ${displayTrainNum} ${delayText} <br><span class="schedule-uic-sub">UIC: ${uicRaw}</span>`;
-            
-            content.innerHTML = '<p style="text-align:center; color:#66b3ff;">Menetrend keresése...</p>';
-            panel.classList.add('open');
-
-            try {
-                if (!cachedScheduleData) {
-                    const response = await fetch(`https://cdn.holavonat.is/train_data_v3.json?t=${new Date().getTime()}`);
-                    if (!response.ok) throw new Error('Nem sikerült letölteni az adatfájlt.');
-                    cachedScheduleData = await response.json();
-                }
-
-                const cleanNum = (s) => s ? String(s).replace(/\D/g, '') : '';
-                const sTrainNum = cleanNum(trainNumber);
-                const sUicNum = cleanNum(uicRaw);
-
-                let trainData = findTrainDeep(cachedScheduleData, sTrainNum, sUicNum);
-
-                if (trainData) {
-                    let htmlBuilder = '';
-                    const stationList = trainData.stoptimes;
-
-                    if (stationList && Array.isArray(stationList) && stationList.length > 0) {
-                        stationList.forEach(item => {
-                            const stopObj = item.stop || {};
-                            const stationName = stopObj.name || 'Ismeretlen állomás';
-                            
-                            // JAVÍTVA: Platform/Vágányszám eltávolítva a kérésnek megfelelően
-                            
-                            const sArr = formatTimeDisplay(item.scheduledArrival);
-                            const sDep = formatTimeDisplay(item.scheduledDeparture);
-                            const rArr = formatTimeDisplay(item.realtimeArrival);
-                            const rDep = formatTimeDisplay(item.realtimeDeparture);
-                            
-                            let arrDisplay = (rArr !== '-' && rArr !== sArr) 
-                                ? `<span class="time-scheduled">${sArr}</span><span class="time-delayed">${rArr}</span>`
-                                : `<span>${sArr !== '-' ? sArr : rArr}</span>`;
-                            
-                            let depDisplay = (rDep !== '-' && rDep !== sDep) 
-                                ? `<span class="time-scheduled">${sDep}</span><span class="time-delayed">${rDep}</span>`
-                                : `<span>${sDep !== '-' ? sDep : rDep}</span>`;
-
-                            htmlBuilder += `
-                                <div class="schedule-row">
-                                    <div class="sch-station">${stationName}</div>
-                                    <div class="sch-times">
-                                        <span>Érk: ${arrDisplay}</span>
-                                        <span>Ind: ${depDisplay}</span>
-                                    </div>
-                                </div>
-                            `;
-                        });
-                        content.innerHTML = htmlBuilder;
-                    } else {
-                        content.innerHTML = '<p style="text-align:center; color:#ff9800;">Vonat megvan, de üres a stoptimes.</p>';
-                    }
-                } else {
-                    content.innerHTML = '<p style="text-align:center; color:#aaa;">Nem található élő menetrend ehhez a vonathoz/mozdonyhoz.</p>';
-                }
-
-            } catch (error) {
-                console.error("Menetrend hiba:", error);
-                content.innerHTML = '<p style="color: #ff5555; text-align: center;">Hiba történt az adatok beolvasásakor.</p>';
-            }
-        }
 
     </script>
 </body>
