@@ -2,7 +2,7 @@
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Mozdonykereső - Holavonat.is (EMIG) - Dark Mode + Napsütés</title>
     
     <!-- Leaflet CSS -->
@@ -34,7 +34,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            border-bottom: 1px solid #333;
+            border-bottom: 1px solid #2a2a2a;
             z-index: 2000;
             cursor: pointer;
             transition: background-color 0.2s;
@@ -42,6 +42,34 @@
         
         #clock-bar:hover, #clock-bar:active {
             background-color: #2a2a2a;
+        }
+
+        /* --- FELSŐ SZŰRÉS ÉS TALÁLAT SÁV (KÉT SORBAN AZ ÓRA ALATT) --- */
+        #filter-summary-bar {
+            flex: 0 0 auto;
+            width: 100%;
+            background-color: #151515;
+            color: #66b3ff;
+            font-family: monospace;
+            font-size: 12px;
+            line-height: 1.35;
+            text-align: center;
+            padding: 3px 10px;
+            box-sizing: border-box;
+            border-bottom: 1px solid #333;
+            z-index: 2000;
+        }
+
+        #filter-summary-text,
+        #filter-summary-count {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #filter-summary-count {
+            color: #e0e0e0;
+            font-weight: bold;
         }
 
         /* --- FŐ TARTALOM KONTÉNER --- */
@@ -140,15 +168,6 @@
             gap: 5px;
         }
 
-        #bottom-left-controls {
-            position: absolute;
-            bottom: 25px;
-            left: 15px;
-            z-index: 1000;
-            display: flex;
-            gap: 5px;
-        }
-
         #filter-panel {
             display: none;
             background-color: rgba(30, 30, 30, 0.95);
@@ -165,14 +184,59 @@
 
         #filter-panel.show { display: flex; }
 
-        .filter-top-row { display: flex; gap: 5px; width: 100%; }
-        .filter-top-row #btn-all { flex: 0 0 calc(25% - 3.75px); padding: 6px 0; font-size: 12px; }
+        /* Legfelső sor: 4 keresési mód gomb */
+        .search-mode-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            width: 100%;
+        }
 
+        .mode-btn {
+            padding: 6px 2px !important;
+            font-size: 11px !important;
+            width: 100%;
+            box-sizing: border-box;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Második sor: Törlés gomb + Keresőmező X gombbal */
+        .filter-search-row { display: flex; gap: 5px; width: 100%; }
+        .filter-search-row #btn-clear { flex: 0 0 calc(25% - 3.75px); padding: 6px 0; font-size: 12px; }
+
+        .search-input-wrapper {
+            position: relative;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            min-width: 0;
+        }
+
+        /* 16px betűméret megakadályozza az iOS/mobil automatikus ránagyítást */
         .search-input {
-            background: #222; border: 1px solid #555; color: #fff; padding: 8px;
-            border-radius: 4px; flex: 1; box-sizing: border-box; font-size: 14px; min-width: 0;
+            background: #222; border: 1px solid #555; color: #fff; padding: 6px 28px 6px 8px;
+            border-radius: 4px; width: 100%; box-sizing: border-box; font-size: 16px; min-width: 0;
         }
         .search-input:focus { outline: none; border-color: #66b3ff; }
+
+        .search-clear-x {
+            display: none;
+            position: absolute;
+            right: 4px;
+            background: transparent;
+            border: none;
+            color: #999;
+            font-size: 16px;
+            line-height: 1;
+            padding: 4px 6px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .search-clear-x:hover, .search-clear-x:active {
+            color: #ffffff;
+        }
 
         .preset-buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; width: 100%; }
 
@@ -244,12 +308,16 @@
         @media (max-width: 768px) {
             #sun-overlay { width: 360px; height: 360px; }
             .control-btn { padding: 4px 8px; font-size: 12px; }
-            .filter-top-row #btn-all { padding: 4px 0; font-size: 10px; }
-            .search-input { padding: 5px; font-size: 11px; }
+            .mode-btn { padding: 4px 2px !important; font-size: 10px !important; }
+            .filter-search-row #btn-clear { padding: 4px 0; font-size: 10px; }
+            /* Mobilon is marad a 16px betűméret a ránagyítás elkerülésére, de kisebb paddinggal */
+            .search-input { padding: 2px 26px 2px 6px; font-size: 16px; height: 28px; }
+            .search-clear-x { font-size: 14px; padding: 2px 5px; }
             .preset-btn { padding: 4px 0; font-size: 10px; }
             #timer-btn { width: 38px; text-align: center; }
             #uic-toggle { min-width: 36px; }
             #clock-bar { font-size: 12px; }
+            #filter-summary-bar { font-size: 11px; padding: 2px 8px; }
             #status-bar { font-size: 11px; }
         }
     
@@ -260,6 +328,10 @@
 <body>
 
     <div id="clock-bar" onclick="hardRefresh()" title="Kattints a teljes oldal újratöltéséhez">Idő szinkronizálása...</div>
+    <div id="filter-summary-bar">
+        <div id="filter-summary-text">Szűrés: Összes jármű</div>
+        <div id="filter-summary-count">Találatok: 0 db</div>
+    </div>
 
     <div id="app-content">
         <div id="filter-container">
@@ -279,16 +351,29 @@
             </div>
             
             <div id="filter-panel">
-                <div class="filter-top-row">
-                    <button id="btn-all" class="control-btn preset-btn active-filter" onclick="togglePreset('all', this)">Összes</button>
-                    <input type="text" id="search-input" class="search-input" placeholder="Keresés (Pl.: 117, 415...)" onkeyup="renderLocomotives()">
+                <!-- 1. SOR: 4 keresési mód gomb -->
+                <div class="search-mode-row">
+                    <button class="control-btn mode-btn active-filter" data-mode="series" onclick="setSearchMode('series', this)" title="Keresés csak a mozdonysorozatban (cccc)">Sorozat</button>
+                    <button class="control-btn mode-btn" data-mode="uic" onclick="setSearchMode('uic', this)" title="Keresés a teljes pályaszámban">Pályaszám</button>
+                    <button class="control-btn mode-btn" data-mode="train" onclick="setSearchMode('train', this)" title="Keresés csak a vonatszámokban">Vonatszám</button>
+                    <button class="control-btn mode-btn" data-mode="station" onclick="setSearchMode('station', this)" title="Keresés az induló és célállomásokban">Állomás</button>
+                </div>
+
+                <!-- 2. SOR: Törlés gomb és beviteli mező X gombbal -->
+                <div class="filter-search-row">
+                    <button id="btn-clear" class="control-btn preset-btn" onclick="clearAllFilters()">Törlés</button>
+                    <div class="search-input-wrapper">
+                        <input type="text" id="search-input" class="search-input" placeholder="Sorozat (pl.: 431, 43?...)" oninput="handleSearchInput()">
+                        <button type="button" id="search-clear-x" class="search-clear-x" onclick="clearSearchInputOnly()" title="Szöveg törlése">&#10005;</button>
+                    </div>
                 </div>
                 
+                <!-- 3. SOR+: Gyorsgombok (Presets) -->
                 <div class="preset-buttons">
-                    <button class="control-btn preset-btn" style="color: #4caf50; border-color: #4caf50;" onclick="togglePreset('Zöld', this)" title="Pontos vagy <5 perc (csak VSz)">Zöld</button>
-                    <button class="control-btn preset-btn" style="color: #ffeb3b; border-color: #ffeb3b;" onclick="togglePreset('Sárga', this)" title="5-14 perc késés (csak VSz)">Sárga</button>
-                    <button class="control-btn preset-btn" style="color: #ff9800; border-color: #ff9800;" onclick="togglePreset('Narancs', this)" title="15-59 perc késés (csak VSz)">Narancs</button>
-                    <button class="control-btn preset-btn" style="color: #f44336; border-color: #f44336;" onclick="togglePreset('Piros', this)" title="60+ perc késés (csak VSz)">Piros</button>
+                    <button class="control-btn preset-btn" style="color: #4caf50; border-color: #4caf50;" onclick="togglePreset('Zöld', this)" title="Pontos vagy <5 perc (csak személyvonat VSz)">Zöld</button>
+                    <button class="control-btn preset-btn" style="color: #ffeb3b; border-color: #ffeb3b;" onclick="togglePreset('Sárga', this)" title="5-14 perc késés (csak személyvonat VSz)">Sárga</button>
+                    <button class="control-btn preset-btn" style="color: #ff9800; border-color: #ff9800;" onclick="togglePreset('Narancs', this)" title="15-59 perc késés (csak személyvonat VSz)">Narancs</button>
+                    <button class="control-btn preset-btn" style="color: #f44336; border-color: #f44336;" onclick="togglePreset('Piros', this)" title="60+ perc késés (csak személyvonat VSz)">Piros</button>
                     <button class="control-btn preset-btn" onclick="togglePreset('VSz', this)" title="Csak vonatszámmal rendelkezők">VSz</button>
                     <button class="control-btn preset-btn" onclick="togglePreset('NVSz', this)" title="Vonatszám nélküliek">NVSz</button>
                     <button class="control-btn preset-btn" onclick="togglePreset('Mozog', this)" title="Csak mozgó járművek">Mozog</button>
@@ -308,12 +393,8 @@
             <div id="timer-btn" class="control-btn top-btn" onclick="manualRefresh()" title="Azonnali frissítés">30</div>
         </div>
 
-        <div id="bottom-left-controls">
-            <div id="wakelock-toggle" class="control-btn top-btn" onclick="toggleWakeLock()" title="Kijelző ébrentartása">💡 Ébrentartás</div>
-        </div>
-
         <div id="map"></div>
-        <div id="sun-overlay"></div>
+        <div id="sun-overlay" style="display: none;"></div>
     </div>
 
     <div id="status-bar">Keresés... | 00:00</div>
@@ -321,11 +402,39 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // ==========================================
-        // PONTOS IDŐ (NTP HTTP) LOGIKA ÉS CACHE
+        // PONTOS IDŐ (EUROPE/BUDAPEST) ÉS STÁTUSZ LOGIKA
         // ==========================================
         let timeOffset = 0; 
+        let appStartTime = Date.now();
         let lastDbUpdateTime = null; 
-        const daysMap = ['V', 'H', 'K', 'Sze', 'Cs', 'P', 'Szo'];
+
+        const huDateFormatter = new Intl.DateTimeFormat('hu-HU', {
+            timeZone: 'Europe/Budapest',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            weekday: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+
+        function getBudapestParts(timestampMs) {
+            const parts = huDateFormatter.formatToParts(new Date(timestampMs));
+            const v = {};
+            parts.forEach(p => v[p.type] = p.value);
+            const cleanWeekday = (v.weekday || '').replace('.', '');
+            return {
+                year: v.year,
+                month: v.month,
+                day: v.day,
+                weekday: cleanWeekday,
+                hour: v.hour,
+                minute: v.minute,
+                second: v.second
+            };
+        }
         
         function hardRefresh() {
             const url = new URL(window.location.href);
@@ -340,464 +449,18 @@
                     const data = await response.json();
                     const ntpTime = new Date(data.datetime).getTime();
                     const localTime = Date.now();
-                    timeOffset = ntpTime - localTime; 
+                    timeOffset = ntpTime - localTime;
+                    if (!lastDbUpdateTime) {
+                        appStartTime = Date.now() + timeOffset;
+                    }
                 }
             } catch (err) {
-                console.warn('Nem sikerült az NTP szinkronizáció, a helyi időt használjuk.', err);
+                console.warn('Nem sikerült az NTP szinkronizáció, a helyi óra + Budapest időzóna marad érvényben.', err);
             }
         }
 
         function updateClockBar() {
             const nowMs = Date.now() + timeOffset;
-            const now = new Date(nowMs);
-            const yyyy = now.getFullYear();
-            const mm = String(now.getMonth() + 1).padStart(2, '0');
-            const dd = String(now.getDate()).padStart(2, '0');
-            const dayStr = daysMap[now.getDay()];
-            const hh = String(now.getHours()).padStart(2, '0');
-            const min = String(now.getMinutes()).padStart(2, '0');
-            const ss = String(now.getSeconds()).padStart(2, '0');
+            const nowParts = getBudapestParts(nowMs);
             
-            document.getElementById('clock-bar').innerText = `${yyyy}.${mm}.${dd}. ${dayStr} ${hh}:${min}:${ss}`;
-
-            if (lastDbUpdateTime) {
-                const options = { timeZone: 'Europe/Budapest', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
-                const parts = new Intl.DateTimeFormat('hu-HU', options).formatToParts(new Date(lastDbUpdateTime));
-                let v = {}; parts.forEach(p => v[p.type] = p.value);
-                
-                const elapsedMs = nowMs - lastDbUpdateTime;
-                const elapsedSecTotal = Math.floor(elapsedMs / 1000);
-                
-                let timeStr = "00:00";
-                if (elapsedSecTotal >= 0) {
-                    const e_min = String(Math.floor(elapsedSecTotal / 60)).padStart(2, '0');
-                    const e_sec = String(elapsedSecTotal % 60).padStart(2, '0');
-                    timeStr = `${e_min}:${e_sec}`;
-                }
-
-                const statusBar = document.getElementById('status-bar');
-                statusBar.innerText = `${v.year}.${v.month}.${v.day}. ${v.hour}:${v.minute}:${v.second} | ${timeStr}`;
-
-                if (elapsedMs > 5 * 60 * 1000) { 
-                    statusBar.classList.add('alert-red');
-                } else {
-                    statusBar.classList.remove('alert-red');
-                }
-            }
-        }
-
-        syncTimeWithNTP();
-        setInterval(updateClockBar, 1000);
-        updateClockBar();
-
-        // ==========================================
-        // TÉRKÉP ALAP BEÁLLÍTÁSAI
-        // ==========================================
-        const map = L.map('map', { zoomControl: false });
-
-        function setInitialMapBounds() {
-            if (window.innerWidth <= 768) map.setView([46.37, 18.14], 8);
-            else map.setView([47.16, 19.50], 8); 
-        }
-        setInitialMapBounds(); 
-
-        const filterPanel = document.getElementById('filter-panel');
-        const filterToggleBtn = document.getElementById('filter-toggle');
-        
-        map.on('click', function() { filterPanel.classList.remove('show'); });
-        L.DomEvent.disableClickPropagation(document.getElementById('filter-container'));
-        L.DomEvent.disableClickPropagation(document.getElementById('top-controls'));
-        L.DomEvent.disableClickPropagation(document.getElementById('bottom-left-controls'));
-
-        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
-        const topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17, attribution: '&copy; OpenTopoMap' });
-        const ormLayer = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenRailwayMap' }).addTo(map);
-        const sunDummyLayer = L.layerGroup(); 
-
-        const baseMaps = { "Sötét Térkép (OSM)": osmLayer, "Sötét Topo Térkép": topoLayer };
-        const overlayMaps = { "Vasúthálózat (ORM)": ormLayer, "Napsütés": sunDummyLayer };
-
-        L.control.layers(baseMaps, overlayMaps, {position: 'bottomright'}).addTo(map);
-        L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-        fetch('https://nominatim.openstreetmap.org/search?country=Hungary&polygon_geojson=1&format=geojson')
-            .then(res => res.json())
-            .then(data => { L.geoJSON(data, { style: { color: "#ffffff", weight: 3, opacity: 0.6, fill: false }, interactive: false }).addTo(map); })
-            .catch(err => console.error(err));
-
-        let markerGroup = L.layerGroup().addTo(map);
-        const DATA_URL = 'https://cdn.holavonat.is/emig_data_v1.json';
-        const UPDATE_INTERVAL = 30;
-        let timeLeft = UPDATE_INTERVAL;
-        let allLocomotives = []; 
-        let activePresets = new Set(['all']);
-        let useMavColors = false; 
-        let labelDisplayState = 0; 
-        
-        const timerBtn = document.getElementById('timer-btn');
-        const uicToggle = document.getElementById('uic-toggle');
-        const mapEl = document.getElementById('map');
-        const searchInput = document.getElementById('search-input');
-        const colorToggleBtn = document.getElementById('color-toggle');
-        const sunOverlay = document.getElementById('sun-overlay');
-
-        // ==========================================
-        // NAPSÜTÉS VIZUALIZÁCIÓ LOGIKÁJA
-        // ==========================================
-        function getMapAzimuth(suncalcAzimuth) { return suncalcAzimuth + Math.PI; }
-        
-        function polarToCartesian(cx, cy, r, angleInRadians) {
-            return { x: cx + (r * Math.sin(angleInRadians)), y: cy - (r * Math.cos(angleInRadians)) };
-        }
-
-        function formatTime(date) {
-            return String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0');
-        }
-
-        function updateSunVisuals() {
-            if (sunOverlay.style.display === 'none') return;
-
-            const center = map.getCenter();
-            const now = new Date(Date.now() + timeOffset);
-            const times = SunCalc.getTimes(now, center.lat, center.lng);
-
-            const cx = 180, cy = 180; 
-            const rBase = 120; 
-
-            const posNow = SunCalc.getPosition(now, center.lat, center.lng);
-            const posSunrise = SunCalc.getPosition(times.sunrise, center.lat, center.lng);
-            const posSunset = SunCalc.getPosition(times.sunset, center.lat, center.lng);
-
-            const azNow = getMapAzimuth(posNow.azimuth);
-            const azSunrise = getMapAzimuth(posSunrise.azimuth);
-            const azSunset = getMapAzimuth(posSunset.azimuth);
-
-            let arcPoints = [];
-            let startTs = times.sunrise.getTime();
-            let endTs = times.sunset.getTime();
-
-            for(let t = startTs; t <= endTs; t += 15 * 60000) {
-                let pos = SunCalc.getPosition(new Date(t), center.lat, center.lng);
-                let az = getMapAzimuth(pos.azimuth);
-                let pt = polarToCartesian(cx, cy, rBase, az);
-                arcPoints.push(`${pt.x},${pt.y}`);
-            }
-
-            let hourlyTicksSvg = '';
-            let startHour = new Date(startTs);
-            startHour.setMinutes(0, 0, 0);
-            startHour.setHours(startHour.getHours() + 1);
-
-            for (let t = startHour.getTime(); t < endTs; t += 3600000) {
-                let dateT = new Date(t);
-                let pos = SunCalc.getPosition(dateT, center.lat, center.lng);
-                let az = getMapAzimuth(pos.azimuth);
-                
-                let pInner = polarToCartesian(cx, cy, rBase * 0.45, az);
-                let p1 = polarToCartesian(cx, cy, rBase - 5, az);
-                let p2 = polarToCartesian(cx, cy, rBase + 5, az);
-                let textP = polarToCartesian(cx, cy, rBase + 16, az);
-                
-                hourlyTicksSvg += `
-                    <line x1="${pInner.x}" y1="${pInner.y}" x2="${p1.x}" y2="${p1.y}" stroke="#ffd700" stroke-width="1.5" stroke-dasharray="2,2" opacity="0.8" />
-                    <line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="#ffd700" stroke-width="3" />
-                    <text x="${textP.x}" y="${textP.y}" fill="#ffd700" font-size="12" class="sun-text" text-anchor="middle" dominant-baseline="middle">${dateT.getHours()}</text>
-                `;
-            }
-
-            const ptSunrise = polarToCartesian(cx, cy, rBase, azSunrise);
-            const ptSunset = polarToCartesian(cx, cy, rBase, azSunset);
-            const ptNow = polarToCartesian(cx, cy, rBase, azNow);
-            
-            const textSunrise = polarToCartesian(cx, cy, rBase - 25, azSunrise);
-            const textSunset = polarToCartesian(cx, cy, rBase - 25, azSunset);
-
-            let svg = `
-            <svg width="100%" height="100%" viewBox="0 0 360 360" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="${cx}" cy="${cy}" r="${rBase}" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" stroke-dasharray="5,5" />
-                <polyline points="${arcPoints.join(' ')}" fill="none" stroke="rgba(255, 215, 0, 0.4)" stroke-width="6" />
-                <line x1="${cx}" y1="${cy}" x2="${ptSunrise.x}" y2="${ptSunrise.y}" stroke="#ff9800" stroke-width="2" stroke-dasharray="4,4" />
-                <line x1="${cx}" y1="${cy}" x2="${ptSunset.x}" y2="${ptSunset.y}" stroke="#f44336" stroke-width="2" stroke-dasharray="4,4" />
-                
-                <text x="${textSunrise.x}" y="${textSunrise.y}" fill="#ff9800" font-size="12" class="sun-text" text-anchor="middle" dominant-baseline="middle">${formatTime(times.sunrise)}</text>
-                <text x="${textSunset.x}" y="${textSunset.y}" fill="#f44336" font-size="12" class="sun-text" text-anchor="middle" dominant-baseline="middle">${formatTime(times.sunset)}</text>
-                
-                ${hourlyTicksSvg}
-                <line x1="${cx}" y1="${cy}" x2="${ptNow.x}" y2="${ptNow.y}" stroke="#ffeb3b" stroke-width="2" />
-                <circle cx="${ptNow.x}" cy="${ptNow.y}" r="6" fill="#ffeb3b" stroke="#000" stroke-width="1" />
-                <circle cx="${cx}" cy="${cy}" r="4" fill="#ffffff" />
-            </svg>
-            `;
-            sunOverlay.innerHTML = svg;
-        }
-
-        map.on('move', updateSunVisuals); 
-        map.on('overlayadd', function(e) { if (e.name === "Napsütés") { sunOverlay.style.display = 'block'; updateSunVisuals(); } });
-        map.on('overlayremove', function(e) { if (e.name === "Napsütés") { sunOverlay.style.display = 'none'; } });
-        setInterval(updateSunVisuals, 60000);
-
-        // ==========================================
-        // KIJELZŐ ÉBRENTARTÁSA (WAKE LOCK API)
-        // ==========================================
-        let wakeLock = null;
-        const wakeLockBtn = document.getElementById('wakelock-toggle');
-
-        async function toggleWakeLock() {
-            if (!('wakeLock' in navigator)) {
-                alert('A böngésződ (vagy az iOS verziód) nem támogatja az ébrentartást. (iOS 16.4+ szükséges)');
-                return;
-            }
-
-            if (wakeLock !== null) {
-                wakeLock.release().then(() => {
-                    wakeLock = null;
-                    wakeLockBtn.classList.remove('color-active');
-                });
-            } else {
-                try {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                    wakeLockBtn.classList.add('color-active');
-                    
-                    wakeLock.addEventListener('release', () => {
-                        wakeLock = null;
-                        if(wakeLockBtn) wakeLockBtn.classList.remove('color-active');
-                    });
-                } catch (err) {
-                    console.error('Wake Lock hiba:', err);
-                    alert('Nem sikerült bekapcsolni az ébrentartást.');
-                }
-            }
-        }
-
-        // Újraaktiválás lapváltás után, ha előtte be volt kapcsolva
-        document.addEventListener('visibilitychange', () => {
-            if (wakeLock !== null && document.visibilityState === 'visible') {
-                navigator.wakeLock.request('screen').then(lock => {
-                    wakeLock = lock;
-                    wakeLockBtn.classList.add('color-active');
-                    wakeLock.addEventListener('release', () => {
-                        wakeLock = null;
-                        wakeLockBtn.classList.remove('color-active');
-                    });
-                }).catch(err => console.log('Ébrentartás visszaállítása sikertelen:', err));
-            }
-        });
-
-        // ==========================================
-        // EREDETI MOZDONY/TÉRKÉP FUNKCIÓK
-        // ==========================================
-        function toggleColors() {
-            useMavColors = !useMavColors;
-            if (useMavColors) colorToggleBtn.classList.add('color-active');
-            else colorToggleBtn.classList.remove('color-active');
-            renderLocomotives(); 
-        }
-
-        function getMavColor(delay, trainNumber) {
-            if (!useMavColors) return "#ffffff"; 
-            const hasTrainNumber = trainNumber !== 'Ismeretlen' && trainNumber.toString().trim() !== '';
-            const trainNumInt = parseInt(trainNumber, 10);
-            const isFreightTrain = !isNaN(trainNumInt) && trainNumInt >= 40000;
-
-            if (!hasTrainNumber || isFreightTrain) return "#888888"; 
-            if (delay < 5) return "#4caf50";       
-            else if (delay < 15) return "#ffeb3b"; 
-            else if (delay < 60) return "#ff9800"; 
-            else return "#f44336";                 
-        }
-
-        function toggleFilterPanel() { filterPanel.classList.toggle('show'); }
-
-        function togglePreset(preset, btnElement) {
-            if (preset === 'all') {
-                activePresets.clear(); activePresets.add('all');
-                document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active-filter'));
-                btnElement.classList.add('active-filter'); searchInput.value = '';
-            } else {
-                if (activePresets.has('all')) { activePresets.delete('all'); document.getElementById('btn-all').classList.remove('active-filter'); }
-                if (activePresets.has(preset)) { activePresets.delete(preset); btnElement.classList.remove('active-filter'); } 
-                else { activePresets.add(preset); btnElement.classList.add('active-filter'); }
-                if (activePresets.size === 0) { activePresets.add('all'); document.getElementById('btn-all').classList.add('active-filter'); searchInput.value = ''; }
-            }
-            renderLocomotives();
-        }
-
-        function toggleUIC() {
-            labelDisplayState = (labelDisplayState + 1) % 3;
-            mapEl.classList.remove('show-uic', 'show-train');
-            if (labelDisplayState === 1) { mapEl.classList.add('show-uic'); uicToggle.classList.add('active'); uicToggle.textContent = 'UIC'; } 
-            else if (labelDisplayState === 2) { mapEl.classList.add('show-train'); uicToggle.classList.add('active'); uicToggle.textContent = 'VSz'; } 
-            else { uicToggle.classList.remove('active'); uicToggle.textContent = 'UIC'; }
-        }
-
-        function manualRefresh() { timeLeft = UPDATE_INTERVAL; timerBtn.textContent = timeLeft; fetchLocomotiveData(); }
-
-        function createDirectionalIcon(heading, uic, delay, trainNumber, isMoving) {
-            const rotation = (heading !== null && heading !== undefined) ? heading : 0; 
-            const fillColor = getMavColor(delay, trainNumber);
-            const arrowElement = (isMoving !== false) ? `
-                <g transform="rotate(${rotation} 12 12)">
-                    <path d="M12 4 L17 11 L13 11 L13 18 L11 18 L11 11 L7 11 Z" fill="#222222"/>
-                </g>` : '';
-
-            let shortUic = uic || "???";
-            const cln = shortUic.replace(/\D/g, ''); 
-            if (cln.length === 12) shortUic = cln.charAt(4) === '8' ? cln.substring(4,8)+' '+cln.substring(8,11) : cln.substring(5,8)+' '+cln.substring(8,11);
-            else if (cln.length >= 7 && cln.charAt(0) === '8') shortUic = cln.substring(0,4)+' '+cln.substring(4,7);
-            else if (cln.length >= 6) shortUic = cln.substring(0,3)+' '+cln.substring(3,6);
-
-            const hasTr = trainNumber !== 'Ismeretlen' && trainNumber.toString().trim() !== '';
-            const trText = `${hasTr ? trainNumber : '-'}, ${delay > 0 ? '+'+delay : '+0'}`;
-
-            return L.divIcon({
-                className: 'custom-div-icon',
-                html: `
-                <div style="position: relative; width: 24px; height: 24px;">
-                    <svg width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="${fillColor}" stroke="#222222" stroke-width="2"/>${arrowElement}</svg>
-                    <div class="info-bubble uic-bubble" style="border-color: ${fillColor}; color: ${fillColor};">${shortUic}</div><div class="info-bubble train-bubble" style="border-color: ${fillColor}; color: ${fillColor};">${shortUic}<br>${trText}</div>
-                </div>`,
-                iconSize: [24, 24], iconAnchor: [12, 12] 
-            });
-        }
-
-        function renderLocomotives() {
-            markerGroup.clearLayers();
-            const rawSearchText = searchInput.value.toLowerCase();
-            const searchTerms = rawSearchText.split(',').map(term => term.trim()).filter(term => term !== '');
-            const isFilterActive = !activePresets.has('all') || rawSearchText.trim() !== '';
-            
-            if (isFilterActive) filterToggleBtn.classList.add('has-active-filter');
-            else filterToggleBtn.classList.remove('has-active-filter');
-
-            allLocomotives.forEach(loco => {
-                const uic = loco.uic || loco.UIC || 'Ismeretlen';
-                const trainNumber = loco.trainNumber || loco.TrainNumber || loco.flight || 'Ismeretlen';
-                const hasTrainNumber = trainNumber !== 'Ismeretlen' && trainNumber.toString().trim() !== '';
-                const trainNumInt = parseInt(trainNumber, 10);
-                const isT = !isNaN(trainNumInt) && trainNumInt >= 40000;
-                const isMoving = loco.moving !== undefined ? loco.moving : loco.Moving;
-                const delayMin = parseInt(loco.delayMin || loco.delay || 0, 10);
-                let match = true;
-                if (!activePresets.has('all')) {
-                    const types = ['630', '431', '628', '418', '43X'];
-                    const activeTypes = types.filter(t => activePresets.has(t));
-                    if (activeTypes.length > 0) {
-                        let typeMatch = false;
-                        if (activePresets.has('630') && uic.includes('630')) typeMatch = true;
-                        if (activePresets.has('431') && uic.includes('431')) typeMatch = true;
-                        if (activePresets.has('43X') && (uic.includes('430') || uic.includes('432') || uic.includes('433'))) typeMatch = true;
-                        if (activePresets.has('628') && uic.includes('628')) typeMatch = true;
-                        if (activePresets.has('418') && uic.includes('418')) typeMatch = true;
-                        if (!typeMatch) match = false;
-                    }
-
-                    const vszProps = ['VSz', 'NVSz', 'T'];
-                    const activeVsz = vszProps.filter(t => activePresets.has(t));
-                    if (activeVsz.length > 0) {
-                        let vszMatch = false;
-                        if (activePresets.has('VSz') && hasTrainNumber) vszMatch = true;
-                        if (activePresets.has('NVSz') && !hasTrainNumber) vszMatch = true;
-                        if (activePresets.has('T') && isT) vszMatch = true;
-                        if (!vszMatch) match = false;
-                    }
-
-                    const moveProps = ['Mozog', 'Áll'];
-                    const activeMove = moveProps.filter(t => activePresets.has(t));
-                    if (activeMove.length > 0) {
-                        let moveMatch = false;
-                        if (activePresets.has('Mozog') && isMoving === true) moveMatch = true;
-                        if (activePresets.has('Áll') && isMoving === false) moveMatch = true;
-                        if (!moveMatch) match = false;
-                    }
-
-                    const delayProps = ['Zöld', 'Sárga', 'Narancs', 'Piros'];
-                    const activeDelay = delayProps.filter(t => activePresets.has(t));
-                    if (activeDelay.length > 0) {
-                        let delayMatch = false;
-                        if (hasTrainNumber) {
-                            if (activePresets.has('Zöld') && delayMin < 5) delayMatch = true;
-                            if (activePresets.has('Sárga') && delayMin >= 5 && delayMin < 15) delayMatch = true;
-                            if (activePresets.has('Narancs') && delayMin >= 15 && delayMin < 60) delayMatch = true;
-                            if (activePresets.has('Piros') && delayMin >= 60) delayMatch = true; 
-                        }
-                        if (!delayMatch) match = false;
-                    }
-                }
-                if (!match) return;
-
-                if (searchTerms.length > 0) {
-                    let textMatch = false;
-                    for (const term of searchTerms) { if (uic.toLowerCase().includes(term) || trainNumber.toString().toLowerCase().includes(term)) { textMatch = true; break; } }
-                    if (!textMatch) return; 
-                }
-
-                const lat = loco.lat || loco.Lat || loco.latitude || loco.Latitude;
-                const lon = loco.lon || loco.lng || loco.Lon || loco.Lng || loco.longitude || loco.Longitude;
-                if (lat && lon) {
-                    const heading = loco.heading !== undefined ? loco.heading : (loco.Heading !== undefined ? loco.Heading : loco.direction);
-                    const marker = L.marker([lat, lon], { icon: createDirectionalIcon(heading, uic, delayMin, trainNumber, isMoving) });
-                    
-                    marker.bindTooltip(`<div><b>UIC:</b> ${uic}<br><b>Vonat:</b> ${trainNumber}<br><b>Útvonal:</b> ${loco.from || loco.origin || '-'} &#10141; ${loco.to || loco.destination || '-'}<br><b>Késés:</b> ${delayMin > 0 ? '<span class="delay-warning">+'+delayMin+' perc</span>' : '0 perc'}</div>`, { className: 'train-tooltip', direction: 'top', offset: [0, -10], opacity: 1 });
-                    marker.addTo(markerGroup);
-                }
-            });
-        }
-
-        async function fetchLocomotiveData() {
-            try {
-                timerBtn.classList.remove('flash-animation');
-                void timerBtn.offsetWidth; 
-                timerBtn.classList.add('flash-animation');
-
-                const response = await fetch(`${DATA_URL}?t=${new Date().getTime()}`);
-                if (!response.ok) throw new Error('Hálózati hiba');
-                const data = await response.json();
-
-                let extractedTime = null;
-                if (data && typeof data === 'object' && !Array.isArray(data)) {
-                    const timeKeys = ['timestamp', 'time', 'lastUpdated', 'updatedAt', 'created_at', 'date', 'last_update'];
-                    for (let k of timeKeys) {
-                        if (data[k]) {
-                            let parsed = Number(data[k]);
-                            if (isNaN(parsed)) parsed = new Date(data[k]).getTime();
-                            else if (parsed < 10000000000) parsed *= 1000; 
-                            
-                            if (!isNaN(parsed)) {
-                                extractedTime = parsed;
-                                break;
-                            }
-                        }
-                    }
-                }
-                
-                if (extractedTime) {
-                    lastDbUpdateTime = extractedTime;
-                } else {
-                    lastDbUpdateTime = Date.now() + timeOffset;
-                }
-
-                let locomotives = [];
-                if (Array.isArray(data)) locomotives = data;
-                else if (typeof data === 'object') {
-                    locomotives = Object.values(data);
-                    for (let key in data) { if (Array.isArray(data[key])) { locomotives = data[key]; break; } }
-                }
-                allLocomotives = locomotives; 
-                
-                renderLocomotives();
-                updateClockBar(); 
-            } catch (error) { console.error('Hiba frissítéskor:', error); }
-        }
-
-        function updateTimer() {
-            timeLeft--;
-            if (timeLeft <= 0) { timeLeft = UPDATE_INTERVAL; fetchLocomotiveData(); }
-            timerBtn.textContent = timeLeft;
-        }
-
-        fetchLocomotiveData();
-        setInterval(updateTimer, 1000);
-
-    </script>
-</body>
-</html>
+            document.getElementById('clock-bar').innerText = `${nowParts.year}.${nowParts.month}.${nowParts.day}.${nowParts.weekday
